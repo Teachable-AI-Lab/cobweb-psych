@@ -1,6 +1,4 @@
-# from multinomial_cobweb import MultinomialCobwebTree
-from cobweb.cobweb_discrete import CobwebTree
-# from multinomial_cobweb.visualize import visualize
+from cobweb.cobweb_continuous import CobwebContinuousTree
 from random import shuffle, seed, sample
 import time
 import csv
@@ -33,15 +31,18 @@ attribute_values = {
 
 
 def encoding2stimuli(encoding):
-    return {'stimulus': {str(encoding[0]): 1},
-            'letter1': {attribute_values['letter1'][encoding[1]]: 1},
-            'letter2': {attribute_values['letter2'][encoding[2]]: 1},
-            'letter3': {attribute_values['letter3'][encoding[3]]: 1},
-            'letter4': {attribute_values['letter4'][encoding[4]]: 1},
-            'letter5': {attribute_values['letter5'][encoding[5]]: 1},
-            'letter6': {attribute_values['letter6'][encoding[6]]: 1},
-            'category': {attribute_values['category'][encoding[7]]: 1}
-            }
+    return {'stimulus': str(encoding[0]),
+            'category': attribute_values['category'][encoding[7]],
+            'features': np.array(encoding[1:-1], dtype=float)}
+    # return {'stimulus': {str(encoding[0]): 1},
+    #         'letter1': {attribute_values['letter1'][encoding[1]]: 1},
+    #         'letter2': {attribute_values['letter2'][encoding[2]]: 1},
+    #         'letter3': {attribute_values['letter3'][encoding[3]]: 1},
+    #         'letter4': {attribute_values['letter4'][encoding[4]]: 1},
+    #         'letter5': {attribute_values['letter5'][encoding[5]]: 1},
+    #         'letter6': {attribute_values['letter6'][encoding[6]]: 1},
+    #         'category': {attribute_values['category'][encoding[7]]: 1}
+    #         }
 
 
 def make_prediction(prob_dict):
@@ -92,23 +93,10 @@ blocks = 10
 epochs = 5
 stimuli = [encoding2stimuli(ls) for ls in stimuli]
 
-keys = {}
-values = {}
-for stimulus in stimuli:
-    for k, vs in stimulus.items():
-        if k not in keys:
-            keys[k] = len(keys)
-        for v in vs:
-            if v not in values:
-                values[v] = len(values)
 
-keys_reverse = {v: k for k,v in keys.items()}
-values_reverse = {v: k for k,v in values.items()}
-
-pprint(keys)
-
-stimuli_tr = [{keys[k]: {values[v]: float(vs[v]) for v in vs}  for k, vs in stimulus.items() if k != 'stimulus'} for stimulus in stimuli]
-stimuli_te = [{k: v for k, v in stimulus.items() if k != keys['category']} for stimulus in stimuli_tr]
+pprint(stimuli)
+stimuli_tr = [{k: v  for k, v in stimulus.items() if k != 'stimulus'} for stimulus in stimuli]
+stimuli_te = [{k: v for k, v in stimulus.items() if k != 'category'} for stimulus in stimuli_tr]
 
 # list of dataframes (rows):
 dfs = []
@@ -123,9 +111,8 @@ for random_seed in random_seeds:
     for epoch in range(1, epochs + 1):
 
         # model = MultinomialCobwebTree()
-        model = CobwebTree(alpha=2)
-        print(len(stimuli_tr_shuffled))
-        print(blocks)
+        model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.6, prior_var=0.23)
+        # model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.000001, prior_var=0.6)
 
         for block in range(1, blocks + 1):
 
@@ -133,19 +120,25 @@ for random_seed in random_seeds:
             shuffle(stimuli_tr_shuffled)
 
             # Train the model:
-            # pprint(stimuli_tr_shuffled)
-            model.fit(stimuli_tr_shuffled, 0)
+            for s in stimuli_tr_shuffled:
+                label = np.zeros(2)
+                if s['category'] == "A":
+                    label[0] = 1.0
+                else:
+                    label[1] = 1.0
+                model.ifit(s['features'], label)
 
             # Predict:
             for i in range(len(stimuli_te)):
                 # pred_dict_leaf = model.categorize(stimuli_te[i]).predict()['category']
                 # pred_dict_basic = model.categorize(stimuli_te[i]).predict_basic()['category']
                 # pred_dict_best = model.categorize(stimuli_te[i]).predict_best(stimuli_te[i])['category']
-                pred_dict = model.predict_probs(stimuli_te[i], 1000, False, False)[1]
-                
-                pred_dict = {keys_reverse[k]: {values_reverse[v]: pred_dict[k][v] for v in pred_dict[k]} for k in pred_dict}['category']
 
+                pred_vec = model.predict(stimuli_te[i]['features'], np.array([0.0, 0.0]), 30, False)
+                # pred_vec = model.predict_pmi(stimuli_te[i]['features'], np.array([0.0, 0.0]), 30, False)
+                pred_dict = {'A': pred_vec[0], 'B': pred_vec[1]}
                 print(pred_dict)
+                
                 df_stimulus_te = stimulus_prediction_dataframe(i,
                                                                pred_dict,
                                                                random_seed,
