@@ -6,6 +6,7 @@ import csv
 import numpy as np
 import pandas as pd
 from copy import copy, deepcopy
+from pathlib import Path
 
 
 # The binary encodings of all stimuli in a task: [stimulus_index, dim1, dim2, dim3]
@@ -471,10 +472,14 @@ class TaskSet(object):
 
 
 	def df2csv(self, incremental=False):
+		results_dir = Path(__file__).resolve().parent / "results"
+		results_dir.mkdir(parents=True, exist_ok=True)
 		if incremental:
-			self.dataframe_incremental.to_csv(f"exp_shepard_type{self.type}_incre_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv")
+			fname = f"exp_shepard_type{self.type}_incre_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv"
+			self.dataframe_incremental.to_csv(str(results_dir / fname))
 		else:
-			self.dataframe_test.to_csv(f"exp_shepard_type{self.type}_test_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv")
+			fname = f"exp_shepard_type{self.type}_test_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv"
+			self.dataframe_test.to_csv(str(results_dir / fname))
 
 
 # ===============================================
@@ -539,12 +544,14 @@ for task_type in task_types:
 	probs_best.append(summary_accuracy['best'])
 
 # Output the csv data:
-df.to_csv(f"exp_shepard_test_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+	results_dir = Path(__file__).resolve().parent / "results"
+	results_dir.mkdir(parents=True, exist_ok=True)
+	df.to_csv(str(results_dir / f"exp_shepard_test_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
 
 # Compute the correlations:
 # print(probs_leaf, probs_basic, probs_best)
 df_corr_test = compute_correlations(probs_leaf, probs_basic, probs_best)
-df_corr_test.to_csv(f"exp_shepard_test_correlation_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+	df_corr_test.to_csv(str(results_dir / f"exp_shepard_test_correlation_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
 
 
 
@@ -562,6 +569,6 @@ for task_type in task_types:
 		df = task_set.blocks_test_multiple(n_blocks=n_blocks, return_data=True)
 	else:
 		df = pd.concat([df, task_set.blocks_test_multiple(n_blocks=n_blocks, return_data=True)], ignore_index=True)
-df.to_csv(f"exp_shepard_multiple_blocks{int(n_blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+df.to_csv(str(results_dir / f"exp_shepard_multiple_blocks{int(n_blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
 
 

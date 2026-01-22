@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import sys
 from scipy.stats import rankdata
+from pathlib import Path
 
 class MedinDataset(object):
 
@@ -209,7 +210,10 @@ class Experiment(object):
 
 
 	def df2csv(self):
-		self.df.to_csv(f"exp_medin_type-{self.stimulus_type}_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv", index=False)
+		results_dir = Path(__file__).resolve().parent / "results" / self.stimulus_type
+		results_dir.mkdir(parents=True, exist_ok=True)
+		fname = f"exp_medin_type-{self.stimulus_type}_nseeds{int(len(self.random_seeds))}_epoch{self.epochs}.csv"
+		self.df.to_csv(str(results_dir / fname), index=False)
 
 
 	def avg_correlations(self):

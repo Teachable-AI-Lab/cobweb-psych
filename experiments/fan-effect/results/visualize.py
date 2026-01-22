@@ -6,8 +6,8 @@ import seaborn as sns
 
 
 def main(
-	csv_path=Path(__file__).resolve().parents[1] / "exp_fan_effect.csv",
-	out_dir=Path(__file__).parent,
+	csv_path=Path(__file__).resolve().parent / "exp_fan_effect.csv",
+	out_dir=Path(__file__).resolve().parent,
 ):
 	sns.set_theme(style="whitegrid")
 	df = pd.read_csv(csv_path)

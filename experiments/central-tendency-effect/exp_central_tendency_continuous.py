@@ -3,6 +3,7 @@ from itertools import combinations
 from random import seed, shuffle
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 
 def flip_bits(center, idxs):
@@ -86,7 +87,9 @@ def run():
                     })
 
     df = pd.DataFrame(rows)
-    df.to_csv("exp_central_tendency_continuous.csv", index=False)
+    results_dir = Path(__file__).resolve().parent / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    df.to_csv(str(results_dir / "exp_central_tendency_continuous.csv"), index=False)
 
 
 if __name__ == "__main__":

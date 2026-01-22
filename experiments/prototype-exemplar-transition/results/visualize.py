@@ -7,7 +7,7 @@ import seaborn as sns
 
 def main(
     csv_path=Path(__file__).resolve().parent / "exp_smith-minda_blocks10_nseeds5_epoch5.csv",
-    out_dir=Path(__file__).parent,
+    out_dir=Path(__file__).resolve().parent,
 ):
     sns.set_theme(style="whitegrid")
     df = pd.read_csv(csv_path)

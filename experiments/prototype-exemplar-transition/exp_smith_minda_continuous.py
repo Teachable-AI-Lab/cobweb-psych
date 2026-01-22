@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from copy import copy, deepcopy
 from pprint import pprint
+from pathlib import Path
 
 # Stimuli encodings:
 # [stimulus_id, letter1, letter2, letter3, letter4, letter5, letter6, category]
@@ -147,7 +148,9 @@ for random_seed in random_seeds:
 
 # visualize(model)
 df = pd.concat(dfs, ignore_index=True)
-df.to_csv(f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+results_dir = Path(__file__).resolve().parent / "results"
+results_dir.mkdir(parents=True, exist_ok=True)
+df.to_csv(str(results_dir / f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
 
 
 

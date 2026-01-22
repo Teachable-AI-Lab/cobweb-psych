@@ -2,6 +2,7 @@ from cobweb.cobweb_continuous import CobwebContinuousTree
 from random import seed, shuffle
 import numpy as np
 import pandas as pd
+from pathlib import Path
 
 
 def label_vec(idx):
@@ -84,7 +85,9 @@ def run():
                     })
 
     df = pd.DataFrame(rows)
-    df.to_csv("exp_base_rate.csv", index=False)
+    results_dir = Path(__file__).resolve().parent / "results"
+    results_dir.mkdir(parents=True, exist_ok=True)
+    df.to_csv(str(results_dir / "exp_base_rate.csv"), index=False)
 
 
 if __name__ == "__main__":
