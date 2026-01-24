@@ -1,5 +1,5 @@
 # from multinomial_cobweb import MultinomialCobwebTree
-from cobweb.cobweb_discrete import CobwebTree
+from cobweb.cobweb_discrete import CobwebDiscreteTree
 # from multinomial_cobweb.visualize import visualize
 from random import shuffle, seed, sample
 import time
@@ -123,7 +123,7 @@ for random_seed in random_seeds:
     for epoch in range(1, epochs + 1):
 
         # model = MultinomialCobwebTree()
-        model = CobwebTree(alpha=2)
+        model = CobwebDiscreteTree(alpha=0.5)
         print(len(stimuli_tr_shuffled))
         print(blocks)
 
@@ -133,15 +133,14 @@ for random_seed in random_seeds:
             shuffle(stimuli_tr_shuffled)
 
             # Train the model:
-            # pprint(stimuli_tr_shuffled)
-            model.fit(stimuli_tr_shuffled, 0)
+            pprint(stimuli_tr_shuffled)
+            model.fit(stimuli_tr_shuffled)
 
             # Predict:
             for i in range(len(stimuli_te)):
-                # pred_dict_leaf = model.categorize(stimuli_te[i]).predict()['category']
-                # pred_dict_basic = model.categorize(stimuli_te[i]).predict_basic()['category']
-                # pred_dict_best = model.categorize(stimuli_te[i]).predict_best(stimuli_te[i])['category']
-                pred_dict = model.predict_probs(stimuli_te[i], 1000, False, False)[1]
+                # pred_dict = model.categorize(stimuli_te[i]).get_best(stimuli_te[i]).predict_probs()
+                # pred_dict = model.categorize(stimuli_te[i]).get_basic(1000, 30).predict_probs()
+                pred_dict = model.predict_probs(stimuli_te[i], 1000)
                 
                 pred_dict = {keys_reverse[k]: {values_reverse[v]: pred_dict[k][v] for v in pred_dict[k]} for k in pred_dict}['category']
 
@@ -154,8 +153,6 @@ for random_seed in random_seeds:
 
 # visualize(model)
 df = pd.concat(dfs, ignore_index=True)
-df.to_csv(f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+df.to_csv(f"results/exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
 
-
-
-
+model.dump_json('tree.json')

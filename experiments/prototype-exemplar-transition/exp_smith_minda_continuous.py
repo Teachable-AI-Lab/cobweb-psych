@@ -111,7 +111,8 @@ for random_seed in random_seeds:
     for epoch in range(1, epochs + 1):
 
         # model = MultinomialCobwebTree()
-        model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.6, prior_var=0.23)
+        # model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.6, prior_var=0.23)
+        model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.01)
         # model = CobwebContinuousTree(len(stimuli_tr_shuffled[0]['features']), 2, alpha=0.000001, prior_var=0.6)
 
         for block in range(1, blocks + 1):
@@ -134,7 +135,7 @@ for random_seed in random_seeds:
                 # pred_dict_basic = model.categorize(stimuli_te[i]).predict_basic()['category']
                 # pred_dict_best = model.categorize(stimuli_te[i]).predict_best(stimuli_te[i])['category']
 
-                pred_vec = model.predict(stimuli_te[i]['features'], np.array([0.0, 0.0]), 30, False)
+                pred_vec = model.predict(stimuli_te[i]['features'], np.array([0.0, 0.0]), 1000, False)
                 # pred_vec = model.predict_pmi(stimuli_te[i]['features'], np.array([0.0, 0.0]), 30, False)
                 pred_dict = {'A': pred_vec[0], 'B': pred_vec[1]}
                 print(pred_dict)
@@ -147,7 +148,7 @@ for random_seed in random_seeds:
 
 # visualize(model)
 df = pd.concat(dfs, ignore_index=True)
-df.to_csv(f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
+df.to_csv(f"results/exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv", index=False)
 
 
 
