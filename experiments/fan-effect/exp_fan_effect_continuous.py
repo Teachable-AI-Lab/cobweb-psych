@@ -4,11 +4,15 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-concepts = ["c1", "c2", "c3"]
+concepts = ["c1", "c2", "c3", "c4", "c5"]
 facts_by_concept = {
     "c1": ["f1"],
     "c2": ["f2", "f3"],
     "c3": ["f4", "f5", "f6", "f7"],
+    # fan of 8
+    "c4": [f"f{8 + i}" for i in range(8)],
+    # fan of 16
+    "c5": [f"f{16 + i}" for i in range(16)],
 }
 all_facts = [fact for facts in facts_by_concept.values() for fact in facts]
 
@@ -79,7 +83,7 @@ def run():
     df = pd.DataFrame(rows)
     results_dir = Path(__file__).resolve().parent / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(str(results_dir / "exp_fan_effect.csv"), index=False)
+    df.to_csv(str(results_dir / "exp_fan_effect_continuous.csv"), index=False)
 
 
 if __name__ == "__main__":
