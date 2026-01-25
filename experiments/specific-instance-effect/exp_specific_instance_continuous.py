@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
+# Continuous specific-instance effect (Nosofsky-style): one exemplar is oversampled.
+
 
 def label_vec(cat):
     vec = np.zeros(2)
@@ -64,7 +66,7 @@ def run():
     df = pd.DataFrame(rows)
     results_dir = Path(__file__).resolve().parent / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(str(results_dir / "exp_specific_instance.csv"), index=False)
+    df.to_csv(str(results_dir / "exp_specific_instance_continuous.csv"), index=False)
 
 
 if __name__ == "__main__":
