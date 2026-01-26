@@ -2,105 +2,148 @@ from random import seed, shuffle
 from pathlib import Path
 import numpy as np
 import pandas as pd
+import json
 from cobweb.cobweb_discrete import CobwebDiscreteTree
 
-# Discrete base-rate experiment inspired by Homa & Vosburgh (1976) and Medin & Edelson (1988).
-# We bias category frequency during training and measure how Cobweb's predictions favor the
-# frequent category on a balanced test set.
+# Base-rate & Inverse Base-Rate Effect (Medin & Edelson, 1988)
+# Goal: Reproduce inverse base-rate effect where on ambiguous BC trials, 
+# participants often choose the rare category despite training base rates.
+#
+# Training: AB → Common (40 trials), AC → Rare (10 trials)
+# Test: BC (ambiguous) - should bias toward Rare despite lower base rate
+#
+# Citation: Medin, D. L., & Edelson, S. M. (1988). Problem structure and the use of 
+#           base-rate information from experience. JEP: General, 117(1), 68-85.
+
+# Random seed for reproducibility
+RANDOM_SEED = 12345
 
 attribute_values = {
-    "shape": ["square", "triangle"],
-    "color": ["red", "blue"],
-    "size": ["small", "large"],
-    "category": ["A", "B"],
+    "symptom_1": ["absent", "present"],
+    "symptom_2": ["absent", "present"],
+    "symptom_3": ["absent", "present"],
+    "diagnosis": ["Common_Disease", "Rare_Disease"],
 }
 
 
 def make_mappings():
+    """Create attribute and value ID mappings for Cobweb discrete encoding."""
     attr_ids = {name: idx for idx, name in enumerate(attribute_values.keys())}
     value_ids = {}
-    value_ids_reverse = {}
-    next_val_id = 0
     for attr, vals in attribute_values.items():
-        value_ids[attr] = {}
-        value_ids_reverse[attr] = {}
-        for v in vals:
-            value_ids[attr][v] = next_val_id
-            value_ids_reverse[attr][next_val_id] = v
-            next_val_id += 1
-    return attr_ids, value_ids, value_ids_reverse
+        value_ids[attr] = {v: i for i, v in enumerate(vals)}
+    return attr_ids, value_ids
 
 
-def sample_features(cat: str, rng: np.random.Generator, noise: float = 0.15):
-    # Prototypes for each category; noise flips features to create variation.
-    prototype = {
-        "A": {"shape": "square", "color": "red", "size": "small"},
-        "B": {"shape": "triangle", "color": "blue", "size": "large"},
-    }[cat]
-    features = {}
-    for attr in ["shape", "color", "size"]:
-        if rng.random() < noise:
-            # flip to the other option
-            options = attribute_values[attr]
-            features[attr] = options[1] if prototype[attr] == options[0] else options[0]
-        else:
-            features[attr] = prototype[attr]
-    return features
-
-
-def build_train(rs: int, base_rate: float, n_total: int = 240, noise: float = 0.15):
-    rng = np.random.default_rng(rs)
-    n_a = int(n_total * base_rate)
-    n_b = n_total - n_a
+def build_train_medin(ratio_common_rare=4.0):
+    """
+    Build training set following Medin & Edelson (1988) design.
+    Simulated medical diagnosis task.
+    
+    Training patterns:
+    - I + PC -> Common Disease (Frequent)
+      Symptom 1 (I) Present
+      Symptom 2 (PC) Present
+      Symptom 3 (PR) Absent
+    - I + PR -> Rare Disease (Infrequent)
+      Symptom 1 (I) Present
+      Symptom 2 (PC) Absent
+      Symptom 3 (PR) Present
+      
+    (Using standard A,B,C mapping: A=I, B=PC, C=PR)
+    
+    Args:
+        ratio_common_rare: Ratio of Common to Rare training trials (default 4:1)
+    """
+    n_rare = 10
+    n_common = int(n_rare * ratio_common_rare)  # 40 trials
+    
     items = []
-    items.extend({**sample_features("A", rng, noise), "category": "A"} for _ in range(n_a))
-    items.extend({**sample_features("B", rng, noise), "category": "B"} for _ in range(n_b))
+    
+    # Common Disease (A=I present, B=PC present, C=PR absent)
+    for _ in range(n_common):
+        items.append({
+            "symptom_1": "present",
+            "symptom_2": "present",
+            "symptom_3": "absent",
+            "diagnosis": "Common_Disease"
+        })
+    
+    # Rare Disease (A=I present, B=PC absent, C=PR present)
+    for _ in range(n_rare):
+        items.append({
+            "symptom_1": "present",
+            "symptom_2": "absent",
+            "symptom_3": "present",
+            "diagnosis": "Rare_Disease"
+        })
+    
     return items
 
 
-def build_test(rs: int, n_per_class: int = 400, noise: float = 0.15):
-    rng = np.random.default_rng(rs + 13)
-    items = []
-    targets = []
-    for cat in ["A", "B"]:
-        for _ in range(n_per_class):
-            items.append(sample_features(cat, rng, noise))
-            targets.append(cat)
-    return items, targets
+def build_test_medin():
+    """
+    Build test items for inverse base-rate effect.
+    
+    Critical test: BC (Symptom 2 + Symptom 3) - ambiguous
+    """
+    tests = [
+        # Training items
+        ({"symptom_1": "present", "symptom_2": "present", "symptom_3": "absent"}, "Common_Disease", "Train_Common"),
+        ({"symptom_1": "present", "symptom_2": "absent", "symptom_3": "present"}, "Rare_Disease", "Train_Rare"),
+        
+        # Critical ambiguous test: BC (Symptom 2 + Symptom 3 present, Symptom 1 absent)
+        # B is perfect predictor of Common (PC)
+        # C is perfect predictor of Rare (PR)
+        # But C (Rare) is stronger due to inverse base-rate effect
+        ({"symptom_1": "absent", "symptom_2": "present", "symptom_3": "present"}, "ambiguous", "BC_critical"),
+        
+        # Imperfect predictors
+        ({"symptom_1": "present", "symptom_2": "absent", "symptom_3": "absent"}, "Common_Disease", "I_Only"),
+    ]
+    return tests
 
 
 def encode_items(raw_items, attr_ids, value_ids, include_category: bool = True):
+    """Encode items for Cobweb discrete tree."""
     encoded = []
     for item in raw_items:
         entry = {}
-        for attr in ["shape", "color", "size"]:
+        for attr in ["symptom_1", "symptom_2", "symptom_3"]:
             entry[attr_ids[attr]] = {value_ids[attr][item[attr]]: 1.0}
-        if include_category:
-            entry[attr_ids["category"]] = {value_ids["category"][item["category"]]: 1.0}
+        if include_category and "diagnosis" in item:
+            entry[attr_ids["diagnosis"]] = {value_ids["diagnosis"][item["diagnosis"]]: 1.0}
         encoded.append(entry)
     return encoded
 
 
 def run():
-    random_seeds = [1, 32, 64, 128, 356]
-    base_rates = [0.5, 0.65, 0.8, 0.9]
-    blocks = 12
-    epochs = 3
+    """
+    Run the inverse base-rate effect experiment (Medin & Edelson, 1988).
+    Medical diagnosis cover story (Symptom vectors).
+    """
+    random_seeds = [RANDOM_SEED + i * 31 for i in range(5)]
+    ratio_conditions = [4.0] # Simplify to main effect
+    blocks = 15
+    epochs = 4
     rows = []
 
-    attr_ids, value_ids, value_ids_reverse = make_mappings()
-    category_attr = attr_ids["category"]
-    cat_id_A = value_ids["category"]["A"]
-    cat_id_B = value_ids["category"]["B"]
+    attr_ids, value_ids = make_mappings()
+    category_attr = attr_ids["diagnosis"]
+    cat_id_common = value_ids["diagnosis"]["Common_Disease"]
+    cat_id_rare = value_ids["diagnosis"]["Rare_Disease"]
 
     for rs in random_seeds:
         seed(rs)
         np.random.seed(rs)
-        test_raw, test_targets = build_test(rs)
-        test_items = encode_items(test_raw, attr_ids, value_ids, include_category=False)
+        
+        # Build test set (same for all conditions)
+        test_patterns = build_test_medin()
 
-        for base_rate in base_rates:
-            train_raw = build_train(rs, base_rate)
+        for ratio in ratio_conditions:
+            # Build training set for this ratio
+            train_raw = build_train_medin(ratio_common_rare=ratio)
+            
             for epoch in range(1, epochs + 1):
                 model = CobwebDiscreteTree(alpha=0.5)
                 for block in range(1, blocks + 1):
@@ -108,33 +151,60 @@ def run():
                     train_items = encode_items(train_raw, attr_ids, value_ids, include_category=True)
                     model.fit(train_items, 1, True)
 
-                    correct = 0
-                    share_b_probs = []
-                    for feat, target in zip(test_items, test_targets):
-                        pred = model.predict_probs(feat, 100, True, False)[1]
-                        cat_probs = pred.get(category_attr, {})
-                        prob_a = cat_probs.get(cat_id_A, 0.0)
-                        prob_b = cat_probs.get(cat_id_B, 0.0)
-                        pred_label = "A" if prob_a >= prob_b else "B"
-                        if pred_label == target:
-                            correct += 1
-                        share_b_probs.append(prob_b)
-
-                    rows.append(
-                        {
+                    # Evaluate on each test pattern
+                    for test_item, true_label, item_type in test_patterns:
+                        test_encoded = encode_items([test_item], attr_ids, value_ids, include_category=False)[0]
+                        pred = model.predict(test_encoded, 100, True)[1]
+                        prob_common = pred.get(cat_id_common, 0.0)
+                        prob_rare = pred.get(cat_id_rare, 0.0)
+                        
+                        # Predicted category
+                        pred_label = "Common" if prob_common >= prob_rare else "Rare"
+                        
+                        # For BC critical te_Disease" if prob_common >= prob_rare else "Rare_Disease"
+                        
+                        # For BC critical test, check if we get inverse base-rate effect
+                        shows_ibre = (item_type == "BC_critical" and pred_label == "Rare_Diseas
                             "seed": rs,
                             "epoch": epoch,
                             "block": block,
-                            "base_rate": base_rate,
-                            "accuracy": correct / len(test_items),
-                            "pred_share_B": float(np.mean(share_b_probs)),
-                        }
-                    )
+                            "ratio": ratio,
+                            "test_type": item_type,
+                            "true_label": true_label,
+                            "pred_label": pred_label,
+                            "prob_common": prob_common,
+                            "prob_rare": prob_rare,
+                            "shows_ibre": shows_ibre,
+                        })
 
     df = pd.DataFrame(rows)
     results_dir = Path(__file__).resolve().parent / "results"
     results_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save CSV results
     df.to_csv(str(results_dir / "exp_base_rate_discrete.csv"), index=False)
+    
+    # Calculate and save IBRE summary statistics
+    bc_trials = df[df["test_type"] == "BC_critical"]
+    ibre_rate = bc_trials["shows_ibre"].mean()
+    
+    # Save experiment metadata
+    metadata = {
+        "experiment": "inverse_base_rate_effect",
+        "citation": "Medin, D. L., & Edelson, S. M. (1988). Problem structure and base-rate information. JEP: General, 117(1), 68-85.",
+        "random_seed": RANDOM_SEED,
+        "seeds_used": random_seeds,
+        "ratio_conditions": ratio_conditions,
+        "num_blocks": blocks,
+        "num_epochs": epochs,
+        "training_design": "AB->Common (frequent), AC->Rare (infrequent)",
+        "critical_test": "BC (ambiguous)",
+        "ibre_rate_observed": float(ibre_rate),
+        "expected_effect": "On BC trials, bias toward Rare despite lower base rate (inverse base-rate effect)"
+    }
+    
+    with open(results_dir / "metadata.json", "w") as f:
+        json.dump(metadata, f, indent=2)
 
 
 if __name__ == "__main__":

@@ -68,19 +68,48 @@ def plot_label_feedback(df: pd.DataFrame, out_dir: Path, label: str):
 
 
 def main(
-	discrete_csv=Path(__file__).resolve().parent / "exp_category_label_feedback_discrete.csv",
+	continuous_csv=Path(__file__).resolve().parent.parent / "results" / "exp_category_label_feedback_continuous.csv",
 	out_dir=Path(__file__).resolve().parent,
 ):
 	sns.set_theme(style="whitegrid")
-	generated = False
-
-	if discrete_csv.exists():
-		df_disc = pd.read_csv(discrete_csv)
-		plot_label_feedback(df_disc, out_dir, label="discrete")
-		generated = True
-
-	if not generated:
-		raise FileNotFoundError("No category-label feedback CSVs found; run experiments first.")
+	if continuous_csv.exists():
+		df = pd.read_csv(continuous_csv)
+		
+		# Map distortion to levels
+		dist_map = {"Prototype": 0, "Low": 1, "High": 2}
+		df["dist_level"] = df["distortion"].map(dist_map)
+		
+		# Accuracy metric (prob of true category)
+		# For A targets: prob_A. For B targets: prob_B.
+		# My experiment script calculated 'accuracy' column but also prob_A/B.
+		# Let's use 'accuracy' column if binary or prob if confidence.
+		# Posner used "Endorsement Probability".
+		# Let's use "Probability of Correct Category".
+		df["prob_correct"] = df.apply(lambda r: r.prob_A if r.true_category=="A" else r.prob_B, axis=1)
+		
+		# Filter final epoch for the main graph
+		df_final = df[df["epoch"] == df["epoch"].max()]
+		
+		mean_vals = df_final.groupby(["label_rate", "dist_level", "distortion"], as_index=False)["prob_correct"].mean()
+		
+		fig, ax = plt.subplots(figsize=(7, 5))
+		
+		# Plot: Distortion (X) vs Accuracy (Y) hue=LabelRate
+		sns.lineplot(data=mean_vals, x="dist_level", y="prob_correct", hue="label_rate", 
+		             marker="o", palette="viridis", linewidth=2, ax=ax)
+		
+		ax.set_title("Category Label / Feedback Effect\nPosner & Keele (1968)", fontsize=12)
+		ax.set_ylabel("Endorsement Probability (Accuracy)", fontsize=11)
+		ax.set_xlabel("Distortion Level (0=Proto, 1=Low, 2=High)", fontsize=11)
+		ax.set_xticks([0, 1, 2])
+		ax.set_xticklabels(["Prototype", "Low Distortion", "High Distortion"])
+		ax.set_ylim(0, 1.05)
+		ax.legend(title="Label Rate (1.0=Feedback)")
+		
+		fig.tight_layout()
+		fig.savefig(out_dir / "category_label_feedback_curve_continuous.png", dpi=200)
+	else:
+		print("Continuous CSV not found.")
 
 
 if __name__ == "__main__":
