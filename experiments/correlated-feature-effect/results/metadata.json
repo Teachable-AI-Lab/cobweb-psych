@@ -1,0 +1,21 @@
+{
+  "experiment": "correlated_feature_xor_difficulty",
+  "citation": "Medin, D. L., et al. (1982). Correlated symptoms and simulated medical classification. JEP: LMC, 8(1), 37-50.",
+  "random_seed": 12345,
+  "seeds_used": [
+    12345,
+    12376,
+    12407,
+    12438,
+    12469
+  ],
+  "num_blocks": 15,
+  "num_epochs": 4,
+  "structures": [
+    "uncorrelated",
+    "correlated"
+  ],
+  "final_accuracy_separable": 1.0,
+  "final_accuracy_xor": 1.0,
+  "expected_effect": "Correlated (XOR) structure should show slower learning and lower accuracy than uncorrelated structure"
+}

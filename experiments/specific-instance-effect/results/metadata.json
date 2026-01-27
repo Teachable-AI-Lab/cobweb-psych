@@ -1,0 +1,5 @@
+{
+  "experiment": "specific_instance_continuous",
+  "citation": "Nosofsky (1988)",
+  "expected_effect": "Frequent exemplar (A1) should have higher classification accuracy/confidence than equidistant rare exemplars."
+}
