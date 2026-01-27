@@ -29,3 +29,39 @@ exp1_smith_murphy %>%
     names_from = category_level,
     values_from = mean_probability
   )
+
+
+exp1_smith_murphy %>%
+  group_by(category_level) %>%
+  summarise(
+    mean_probability = mean(probability, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = category_level,
+    values_from = mean_probability
+  )
+
+exp1_smith_murphy %>%
+  group_by(condition) %>%
+  summarise(
+    mean_probability = mean(probability, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = condition,
+    values_from = mean_probability
+  )
+
+# Plot
+#ggplot(exp1_smith_murphy, aes(x = nodes_expanded, y = probability, group=category_level, shape=category_level, fill=category_level)) +
+#  stat_summary(fun = mean, geom = "line") +
+#  stat_summary(fun.data = mean_cl_boot, geom = "errorbar", width=0.15, alpha=0.7) +
+#  stat_summary(fun = mean, geom = "point", size=3) +
+#  labs(
+#    x = "Nodes Expanded",
+#    y = "Probability of True Response",
+#    title = "Cobweb Model"
+#  ) +
+#  theme_classic(base_size = 15)
+
