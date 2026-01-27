@@ -141,7 +141,7 @@ for random_seed in random_seeds:
             for i in range(len(stimuli_te)):
                 # pred_dict = model.categorize(stimuli_te[i]).get_best(stimuli_te[i]).predict_probs()
                 # pred_dict = model.categorize(stimuli_te[i]).get_basic(1000, 30).predict_probs()
-                pred_dict = model.predict_probs(stimuli_te[i], 1000)
+                pred_dict = model.predict(stimuli_te[i], 1000)
                 
                 pred_dict = {keys_reverse[k]: {values_reverse[v]: pred_dict[k][v] for v in pred_dict[k]} for k in pred_dict}['category']
 

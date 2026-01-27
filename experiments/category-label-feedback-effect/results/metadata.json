@@ -1,5 +1,0 @@
-{
-  "experiment": "category_label_feedback_continuous",
-  "description": "Posner & Keele (1968) random dot patterns",
-  "expected_effect": "Feedback (1.0 label rate) improves accuracy and prototype abstraction."
-}
