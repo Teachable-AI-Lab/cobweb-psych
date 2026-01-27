@@ -123,7 +123,7 @@ def run():
     Medical diagnosis cover story (Symptom vectors).
     """
     random_seeds = [RANDOM_SEED + i * 31 for i in range(5)]
-    ratio_conditions = [4.0] # Simplify to main effect
+    ratio_conditions = [1.0, 2.0, 4.0] # Simplify to main effect
     blocks = 15
     epochs = 4
     rows = []

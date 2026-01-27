@@ -10,12 +10,14 @@
     12469
   ],
   "ratio_conditions": [
+    1.0,
+    2.0,
     4.0
   ],
   "num_blocks": 15,
   "num_epochs": 4,
   "training_design": "AB->Common (frequent), AC->Rare (infrequent)",
   "critical_test": "BC (ambiguous)",
-  "ibre_rate_observed": 0.0,
+  "ibre_rate_observed": 0.2,
   "expected_effect": "On BC trials, bias toward Rare despite lower base rate (inverse base-rate effect)"
 }
