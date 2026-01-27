@@ -154,17 +154,20 @@ def run():
                     # Evaluate on each test pattern
                     for test_item, true_label, item_type in test_patterns:
                         test_encoded = encode_items([test_item], attr_ids, value_ids, include_category=False)[0]
-                        pred = model.predict(test_encoded, 100, True)[1]
+                        # Corrected predict call: dictionary access, not tuple index
+                        pred_dict = model.predict(test_encoded, 100, True)
+                        pred = pred_dict.get(category_attr, {})
+
                         prob_common = pred.get(cat_id_common, 0.0)
                         prob_rare = pred.get(cat_id_rare, 0.0)
                         
                         # Predicted category
                         pred_label = "Common" if prob_common >= prob_rare else "Rare"
                         
-                        # For BC critical te_Disease" if prob_common >= prob_rare else "Rare_Disease"
-                        
                         # For BC critical test, check if we get inverse base-rate effect
-                        shows_ibre = (item_type == "BC_critical" and pred_label == "Rare_Diseas
+                        shows_ibre = (item_type == "BC_critical" and pred_label == "Rare")
+
+                        rows.append({
                             "seed": rs,
                             "epoch": epoch,
                             "block": block,

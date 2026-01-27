@@ -86,12 +86,15 @@ def plot_inverse_base_rate(df: pd.DataFrame, out_dir: Path, label: str):
 
 
 def main(
-	discrete_csv=Path(__file__).resolve().parent.parent / "results" / "exp_base_rate_discrete.csv",
+	discrete_csv=Path(__file__).resolve().parent / "exp_base_rate_discrete.csv",
 	out_dir=Path(__file__).resolve().parent,
 ):
 	sns.set_theme(style="whitegrid")
 	if discrete_csv.exists():
 		df = pd.read_csv(discrete_csv)
+		
+		# Generate the standard IBRE plots from helper
+		plot_inverse_base_rate(df, out_dir, "discrete")
 		
 		# Medin & Edelson Graph: Bar chart of choice proportions
 		# X: Stimulus (AB Common, AC Rare, BC Ambiguous)

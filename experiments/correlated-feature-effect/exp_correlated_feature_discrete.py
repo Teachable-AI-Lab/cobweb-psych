@@ -115,7 +115,7 @@ def evaluate(model, test_items_encoded, test_targets, category_attr, cat_id_A, c
     correct = 0
     share_b = []
     for feat_enc, target in zip(test_items_encoded, test_targets):
-        pred = model.predict_probs(feat_enc, 100, True, False)[1]
+        pred = model.predict(feat_enc, 100, True)
         cat_probs = pred.get(category_attr, {})
         prob_a = cat_probs.get(cat_id_A, 0.0)
         prob_b = cat_probs.get(cat_id_B, 0.0)
@@ -149,7 +149,7 @@ def run():
             test_items_encoded = [encode_item_discrete(t, attr_ids, value_ids) for t in tests]
 
             for epoch in range(1, epochs + 1):
-                model = CobwebDiscreteTree(alpha=0.5)
+                model = CobwebDiscreteTree(alpha=1.0)
                 for block in range(1, blocks + 1):
                     shuffle(train_items)
                     train_encoded = [

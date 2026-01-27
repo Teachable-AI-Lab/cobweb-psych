@@ -1,29 +1,5 @@
 {
-  "experiment": "category_label_feedback_effect",
-  "citation": "Posner, M. I., & Keele, S. W. (1968). On the genesis of abstract ideas. JEP, 77(3, Pt.1), 353-363.",
-  "random_seed": 12345,
-  "seeds_used": [
-    12345,
-    12376,
-    12407,
-    12438,
-    12469
-  ],
-  "label_rates": [
-    1.0,
-    0.75,
-    0.5,
-    0.25,
-    0.1,
-    0.0
-  ],
-  "distortion_levels": [
-    0.0,
-    0.05,
-    0.15,
-    0.3
-  ],
-  "num_blocks": 12,
-  "num_epochs": 3,
-  "expected_effect": "Higher label rates (feedback) produce better accuracy and prototype endorsement"
+  "experiment": "category_label_feedback_continuous",
+  "description": "Posner & Keele (1968) random dot patterns",
+  "expected_effect": "Feedback (1.0 label rate) improves accuracy and prototype abstraction."
 }
