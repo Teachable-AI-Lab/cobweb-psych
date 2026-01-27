@@ -26,7 +26,7 @@ def plot_inverse_base_rate(df: pd.DataFrame, out_dir: Path, label: str):
 			data=ibre_by_block, x="block", y="shows_ibre", hue="ratio", 
 			marker="o", ax=ax, palette="magma", linewidth=2
 		)
-		ax.set_title("Inverse Base-Rate Effect Emergence\\nMedin & Edelson (1988)", fontsize=12)
+		ax.set_title("Inverse Base-Rate Effect Emergence - Medin & Edelson (1988)", fontsize=12)
 		ax.set_ylabel("P(Choose Rare on BC trials)", fontsize=11)
 		ax.set_xlabel("Training Block", fontsize=11)
 		ax.set_ylim(0, 1.05)
@@ -41,7 +41,7 @@ def plot_inverse_base_rate(df: pd.DataFrame, out_dir: Path, label: str):
 		)
 		fig, ax = plt.subplots(figsize=(6, 4.5))
 		sns.barplot(data=final_ibre, x="ratio", y="ibre_final", ax=ax, palette="magma")
-		ax.set_title("Final Inverse Base-Rate Effect\\nMedin & Edelson (1988)", fontsize=12)
+		ax.set_title("Final Inverse Base-Rate Effect - Medin & Edelson (1988)", fontsize=12)
 		ax.set_ylabel("P(Choose Rare on BC)", fontsize=11)
 		ax.set_xlabel("Common:Rare Training Ratio", fontsize=11)
 		ax.set_ylim(0, 1.05)
@@ -130,7 +130,7 @@ def main(
 		sns.barplot(data=df_stats, x="Stimulus", y="Proportion", hue="Response", 
 		            palette={"Common Disease": "blue", "Rare Disease": "red"}, ax=ax)
 		
-		ax.set_title("Inverse Base-Rate Effect\nMedin & Edelson (1988)", fontsize=12)
+		ax.set_title("Inverse Base-Rate Effect - Medin & Edelson (1988)", fontsize=12)
 		ax.set_ylabel("Proportion of Responses", fontsize=11)
 		ax.set_ylim(0, 1.05)
 		ax.legend(title="Response")

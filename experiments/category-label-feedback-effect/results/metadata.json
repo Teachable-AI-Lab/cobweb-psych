@@ -1,5 +1,5 @@
 {
   "experiment": "category_label_feedback_continuous",
-  "description": "Posner & Keele (1968) random dot patterns",
-  "expected_effect": "Feedback (1.0 label rate) improves accuracy and prototype abstraction."
+  "description": "Posner & Keele (1968) / Homa (1984) replication with Mixed distortion",
+  "expected_effect": "Feedback > No Feedback. Mixed learning -> better transfer to new/high distortion."
 }

@@ -174,9 +174,3 @@ Medin, D. L., & Edelson, S. M. (1988). Problem structure and the use of base-rat
 Nosofsky, R. M. (1988). Similarity, frequency, and category representations. *Journal of Experimental Psychology: Learning, Memory, and Cognition, 14*(1), 54-65.
 
 Posner, M. I., & Keele, S. W. (1968). On the genesis of abstract ideas. *Journal of Experimental Psychology, 77*(3, Pt.1), 353–363.
-
----
-
-## Notes
-
-- All experiments use `alpha=0.5` for CobwebDiscreteTree

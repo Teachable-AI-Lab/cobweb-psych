@@ -113,17 +113,23 @@ def evaluate(model, test_items_encoded, test_targets, category_attr, cat_id_A, c
     Evaluate model on test set.
     """
     correct = 0
-    share_b = []
+    prob_target_list = []
+    
     for feat_enc, target in zip(test_items_encoded, test_targets):
         pred = model.predict(feat_enc, 100, True)
         cat_probs = pred.get(category_attr, {})
         prob_a = cat_probs.get(cat_id_A, 0.0)
         prob_b = cat_probs.get(cat_id_B, 0.0)
+        
+        # Target 0 is A, 1 is B
+        target_prob = prob_b if target == 1 else prob_a
+        prob_target_list.append(target_prob)
+        
         pred_label = 1 if prob_b > prob_a else 0
         if pred_label == target:
             correct += 1
-        share_b.append(prob_b)
-    return correct / len(test_items_encoded), float(np.mean(share_b))
+            
+    return correct / len(test_items_encoded), float(np.mean(prob_target_list))
 
 
 def run():
@@ -149,7 +155,7 @@ def run():
             test_items_encoded = [encode_item_discrete(t, attr_ids, value_ids) for t in tests]
 
             for epoch in range(1, epochs + 1):
-                model = CobwebDiscreteTree(alpha=1.0)
+                model = CobwebDiscreteTree(alpha=0.8)
                 for block in range(1, blocks + 1):
                     shuffle(train_items)
                     train_encoded = [
@@ -157,17 +163,16 @@ def run():
                          category_attr: {cat_id_A: 1.0} if label == "Disease_A" else {cat_id_B: 1.0}}
                         for feat, label in train_items
                     ]
-                    # Batch fit for speed if supported, else loop
                     model.fit(train_encoded, 1, True)
 
-                    acc, mean_prob_b = evaluate(model, test_items_encoded, targets, category_attr, cat_id_A, cat_id_B)
+                    acc, mean_prob_target = evaluate(model, test_items_encoded, targets, category_attr, cat_id_A, cat_id_B)
                     rows.append({
                         "structure": structure,
                         "seed": rs,
                         "epoch": epoch,
                         "block": block,
                         "accuracy": acc,
-                        "pred_share_B": mean_prob_b,
+                        "pred_prob_target": mean_prob_target,
                     })
 
     df = pd.DataFrame(rows)

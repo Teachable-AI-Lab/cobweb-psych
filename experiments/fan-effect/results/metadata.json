@@ -10,19 +10,19 @@
   "mean_prob_by_fan": [
     {
       "fan_size": 1,
-      "prob": 0.16502781480068135
+      "prob": 0.6816329407259151
     },
     {
       "fan_size": 2,
-      "prob": 0.3203295808518232
+      "prob": 0.41512857834679345
     },
     {
       "fan_size": 4,
-      "prob": 0.1940518506964787
+      "prob": 0.2289788132821219
     },
     {
       "fan_size": 8,
-      "prob": 0.12124928171876666
+      "prob": 0.12046265649011359
     }
   ],
   "expected_effect": "Retrieval probability decreases with increasing fan size"

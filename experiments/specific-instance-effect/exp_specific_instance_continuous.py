@@ -78,7 +78,7 @@ def run():
         
         for epoch in range(1, epochs + 1):
             # 2 dimensions (x, y), 2 labels (A, B)
-            model = CobwebContinuousTree(2, 2, alpha=0.5)
+            model = CobwebContinuousTree(2, 2, alpha=0.8)
             
             for block in range(1, blocks + 1):
                 shuffle(train_items)

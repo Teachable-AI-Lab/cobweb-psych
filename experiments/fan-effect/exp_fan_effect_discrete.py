@@ -115,16 +115,15 @@ def run():
     rows = []
 
     attr_ids, value_ids = make_mappings()
-    object_attr = attr_ids["object"]
 
     for rs in random_seeds:
         seed(rs)
         np.random.seed(rs)
-        train_raw = build_train(rs, instances_per_fact=20)
+        train_raw = build_train(rs, instances_per_fact=15)
         tests_raw = build_tests()
 
         for epoch in range(1, epochs + 1):
-            model = CobwebDiscreteTree(alpha=0.5)
+            model = CobwebDiscreteTree(alpha=0.2)
             for block in range(1, blocks + 1):
                 shuffle(train_raw)
                 train_encoded = [encode_item_discrete(item, attr_ids, value_ids) for item in train_raw]
