@@ -4,173 +4,165 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-def generate_stimuli(n_patterns=250):
+def generate_patient():
     """
-    Generate stimuli based on Gluck & Bower (1988), Experiment 1.
-    4 Cues (S1, S2, S3, S4), Outcomes A (Common) vs B (Rare).
-    
-    Structure from Gluck & Bower 1988 (Approximate medical diagnosis task):
-    - Cues appear independently or conditionally? 
-    - Text: "The four simulated patients (patterns) had the symptom patterns 1110, 1010, 0101, 0001..." 
-      Actually, in Exp 1 they often use patterns where cues have specific validities.
-      
-    Let's implement the core logic: 
-    - 4 Binary Cues. 
-    - Outcome determined probabalistically.
-    - Base Rate of A vs B varies (e.g. 70/30).
-    - Cues have different validities.
-    
-    Using a standard probabilistic configuration for Gluck & Bower:
-    Base Rate P(A) vs P(B).
-    Features are conditionally independent given category (Naive Bayes structure).
-    
-    Returns a list of dicts.
+    Generates a patient dictionary and label.
+    Re-samples if patient has no symptoms (Null patient) as per Gluck & Bower (1988) / Method Description.
     """
-    # Using generic values typical for these experiments or Exp 1
-    # Exp 1: Base Rate A = 0.25 (Rare) vs B = 0.75 (Common), or 50-50, etc.
-    # The prompt mentions "base rates (e.g., 70% vs 30%)".
-    # And "choosing categories in proportion to learned probabilities"
+    # Parameters from Method Description
+    P_RARE = 0.25
+    P_COMMON = 0.75
     
-    # Let's generate a stream where we explicitly control P(A) vs P(B).
-    # And conditional cue probabilities.
-    pass
+    # Symptom Probabilities P(S=1 | Disease)
+    # S1, S2, S3, S4
+    PROBS_RARE = [0.6, 0.4, 0.3, 0.2]
+    # "Analogous but inverse" for Common
+    PROBS_COMMON = [0.2, 0.3, 0.4, 0.6]
+    
+    SYMPTOMS = ["S1", "S2", "S3", "S4"]
 
-def generate_patient(base_rate_A, cue_probs):
-    """
-    base_rate_A: Prob of Category A.
-    cue_probs: {cue_id: {A: p, B: p}}
-    """
-    # 1. Determine Category
-    if random() < base_rate_A:
-        cat = "A"
-    else:
-        cat = "B"
+    while True:
+        # 1. Choose Disease
+        if random() < P_RARE:
+            label = "Rare"
+            probs = PROBS_RARE
+        else:
+            label = "Common"
+            probs = PROBS_COMMON
         
-    # 2. Determine Cues
-    stimulus = {}
-    for i in range(1, 5):
-        c_name = f"C{i}"
-        p_present = cue_probs[c_name][cat]
-        val = 1 if random() < p_present else 0
-        stimulus[c_name] = val
+        # 2. Generate Symptoms
+        patient = {}
+        has_symptom = False
+        for i, p_s in enumerate(probs):
+            sym_name = SYMPTOMS[i]
+            if random() < p_s:
+                patient[sym_name] = 1
+                has_symptom = True
+            else:
+                patient[sym_name] = 0
         
-    return stimulus, cat
+        # 3. Check for Null Patient
+        if has_symptom:
+            return patient, label
 
 def encode_item(stim_dict, label=None, mappings=None):
     """
     Encode item into nested dictionary format required by CobwebDiscreteTree.
     {attr_id: {val_id: count}}
-    
-    If mappings is None, returns (encoded_item, mappings)
     """
     if mappings is None:
-        # Dynamic mapping creation
-        attr_map = {} # name -> id
-        val_map = {} # attr_name -> {val -> id}
-        # pre-populate with known keys to keep order/structure consistent
-        # Features 1..4
-        for i in range(1, 5):
-            k = f"C{i}"
-            attr_map[k] = i
-            val_map[k] = {0: 0, 1: 1}
+        attr_map = {}
+        val_map = {}
+        SYMPTOMS = ["S1", "S2", "S3", "S4"]
         
-        # Category
-        attr_map["Category"] = 0
-        val_map["Category"] = {"A": 0, "B": 1}
+        # S1..S4
+        for s in SYMPTOMS:
+            attr_map[s] = len(attr_map) + 1
+            val_map[s] = {0: 0, 1: 1} # Values 0 and 1
         
+        attr_map["Disease"] = 0
+        val_map["Disease"] = {"Rare": 0, "Common": 1}
         mappings = (attr_map, val_map)
     
     attr_map, val_map = mappings
     encoded = {}
     
-    # Encode Cues
     for k, v in stim_dict.items():
         if k in attr_map:
             a_id = attr_map[k]
-            v_id = val_map[k][v]
-            encoded[a_id] = {v_id: 1.0}
+            # Ensure v is in val_map (it should be 0 or 1)
+            if v in val_map[k]:
+                v_id = val_map[k][v]
+                encoded[a_id] = {v_id: 1.0}
             
-    # Encode Label if present
     if label is not None:
-        a_id = attr_map["Category"]
-        v_id = val_map["Category"][label]
+        a_id = attr_map["Disease"]
+        v_id = val_map["Disease"][label]
         encoded[a_id] = {v_id: 1.0}
         
     return encoded, mappings
 
-def run():
-    random_seeds = [123, 456, 789, 101112, 131415]
-    base_rates_A = [0.1, 0.3, 0.5, 0.7, 0.9]
-    cue_probs = {
-        "C1": {"A": 0.60, "B": 0.40},
-        "C2": {"A": 0.40, "B": 0.60},
-        "C3": {"A": 0.50, "B": 0.50},
-        "C4": {"A": 0.50, "B": 0.50}
-    }
-    blocks = 10
-    trials_per_block = 25
-    rows = []
+def get_true_posteriors():
+    # Calculate P(Rare | Si) for each symptom analytically
+    # Based on the generative model:
+    # P(R) = 0.25, P(C) = 0.75
+    # P(Si|R) = [0.6, 0.4, 0.3, 0.2]
+    # P(Si|C) = [0.2, 0.3, 0.4, 0.6]
     
-    # Initialize mappings once
+    P_RARE = 0.25
+    P_COMMON = 0.75
+    PROBS_RARE = [0.6, 0.4, 0.3, 0.2]
+    PROBS_COMMON = [0.2, 0.3, 0.4, 0.6]
+    SYMPTOMS = ["S1", "S2", "S3", "S4"]
+    
+    posteriors = {}
+    for i, sym in enumerate(SYMPTOMS):
+        p_s_r = PROBS_RARE[i]
+        p_s_c = PROBS_COMMON[i]
+        
+        p_s = (p_s_r * P_RARE) + (p_s_c * P_COMMON)
+        p_r_s = (p_s_r * P_RARE) / p_s
+        posteriors[sym] = p_r_s
+    return posteriors
+
+def run():
+    # Configuration
+    n_seeds = 20
+    n_trials = 250
+    results = []
+    
+    # Initialize mappings
     _, mappings = encode_item({})
     attr_map, val_map = mappings
-    cat_attr_id = attr_map["Category"]
-    cat_val_A = val_map["Category"]["A"]
+    disease_attr_id = attr_map["Disease"]
+    rare_val_id = val_map["Disease"]["Rare"]
+    
+    true_posteriors = get_true_posteriors()
+    SYMPTOMS = ["S1", "S2", "S3", "S4"]
 
-    for rs in random_seeds:
-        seed(rs)
-        for br_A in base_rates_A:
-            model = CobwebDiscreteTree(alpha=0.5)
+    for s in range(n_seeds):
+        seed(s)
+        tree = CobwebDiscreteTree(alpha=0.5) 
+        
+        # Training
+        for _ in range(n_trials):
+            patient, label = generate_patient()
+            encoded, _ = encode_item(patient, label, mappings)
+            tree.fit([encoded])
             
-            for b in range(1, blocks + 1):
-                block_data = []
-                for _ in range(trials_per_block):
-                    stim, label = generate_patient(br_A, cue_probs)
-                    block_data.append((stim, label))
-                
-                n_A_responses = 0
-                n_A_actual = 0
-                
-                for stim, actual_label in block_data:
-                    # Encode stimulus for prediction (no label)
-                    encoded_stim, _ = encode_item(stim, label=None, mappings=mappings)
-                    
-                    # Predict
-                    # CobwebDiscreteTree.predict(instance, max_nodes, greedy=False)
-                    probs = model.predict(encoded_stim, 100, True)
-                    
-                    # Extract P(Category=A)
-                    prob_A = 0.0
-                    if cat_attr_id in probs and cat_val_A in probs[cat_attr_id]:
-                        prob_A = probs[cat_attr_id][cat_val_A]
-                    
-                    pred_response_A = prob_A
-                    
-                    # Train
-                    encoded_train, _ = encode_item(stim, label=actual_label, mappings=mappings)
-                    model.fit([encoded_train])
-                    
-                    # Record
-                    n_A_responses += pred_response_A
-                    if actual_label == "A":
-                        n_A_actual += 1
-                        
-                avg_response_A = n_A_responses / trials_per_block
-                actual_base_rate_block = n_A_actual / trials_per_block
-                
-                rows.append({
-                    "seed": rs,
-                    "condition_base_rate": br_A,
-                    "block": b,
-                    "response_prob_A": avg_response_A,
-                    "actual_prop_A": actual_base_rate_block
-                })
-
-    df = pd.DataFrame(rows)
-    # ...existing code... (Save logic)
-    results_dir = Path(__file__).resolve().parent / "results"
-    results_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(str(results_dir / "exp_probability_matching.csv"), index=False)
+        # Testing
+        # "Of all the patients... exhibiting [symptom]..."
+        # Querying with ONE symptom present. Others are unknown (missing).
+        # We pass only {Si: 1} to predict.
+        
+        for sym in SYMPTOMS:
+            # Create test instance with only that symptom
+            test_patient = {sym: 1}
+            encoded_test, _ = encode_item(test_patient, mappings=mappings)
+            
+            # Predict
+            # Returns {attr_id: {val_id: prob}}
+            # We want prob of Disease=Rare
+            probs = tree.predict(encoded_test, 100, True)
+            
+            pred_p_rare = 0.0
+            if disease_attr_id in probs and rare_val_id in probs[disease_attr_id]:
+                pred_p_rare = probs[disease_attr_id][rare_val_id]
+            
+            # Record result
+            results.append({
+                "seed": s,
+                "symptom": sym,
+                "true_p_rare": true_posteriors[sym],
+                "pred_p_rare": pred_p_rare
+            })
+            
+    # Save
+    df = pd.DataFrame(results)
+    out_dir = Path(__file__).resolve().parent / "results"
+    out_dir.mkdir(exist_ok=True, parents=True)
+    df.to_csv(out_dir / "exp_probability_matching_gluck.csv", index=False)
+    print(f"Done. Saved to {out_dir / 'exp_probability_matching_gluck.csv'}")
 
 if __name__ == "__main__":
     run()
