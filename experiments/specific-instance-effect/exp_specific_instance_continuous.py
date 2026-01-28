@@ -1,123 +1,162 @@
 from cobweb.cobweb_continuous import CobwebContinuousTree
-from random import seed, shuffle, choices
+from random import seed, shuffle
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import json
 
-# Continuous specific-instance / frequency bias effect (Nosofsky 1988).
-# Goal: show that over-presented exemplars bias classification locally in a continuous space.
+# Specific-Instance / Frequency Bias Effect (Nosofsky, 1988)
 #
-# Stimuli: 12 color exemplars (Munsell chips) varying in saturation and brightness.
-# Encoding: Continuous coordinates (dim1, dim2).
-# Manipulation: One exemplar (C1) is presented with high frequency (e.g. 5x).
+# Reference: Nosofsky, R. M. (1988). Similarity, frequency, and category 
+#            representations. Journal of Experimental Psychology: Learning, 
+#            Memory, and Cognition, 14(1), 54-65.
 #
-# Citation: Nosofsky, R. M. (1988). Similarity, frequency, and category 
-#           representations. JEP: Learning, Memory, and Cognition, 14(1), 54-65.
+# Goal: Demonstrate that increasing the presentation frequency of a specific exemplar
+#       enhances classification probability for that exemplar and its local neighborhood,
+#       even when controlling for distance to the category prototype.
 
-RANDOM_SEED = 12345
-
-# Define 12 stimuli in 2D space (Saturation, Brightness)
-# We'll simulate them as points on a grid or circle. 
-# Nosofsky 1988 Exp 1 schematic:
-# Category A: Points 1-5? 
-# Let's generate 2 clusters of points.
-# Category A: Centered at (2, 2)
-# Category B: Centered at (6, 6)
-
-def generate_stimuli():
-    # 6 exemplars for Category A
-    # We'll make C1 the frequent one.
-    cat_A_points = [
-        (1.0, 2.0), (2.0, 1.0), (2.0, 2.0), # (2,2) is central?
-        (2.0, 3.0), (3.0, 2.0), (3.0, 3.0)
-    ]
-    # 6 exemplars for Category B
-    cat_B_points = [
-        (5.0, 6.0), (6.0, 5.0), (6.0, 6.0),
-        (6.0, 7.0), (7.0, 6.0), (7.0, 7.0)
-    ]
+def generate_nosofsky_1988_stimuli_structure():
+    """
+    Generates stimuli for a 2-Category classification task.
+    Structure aims to control for 'Typicality' (distance to centroid) while varying 'Frequency'.
     
-    stimuli = []
-    for i, p in enumerate(cat_A_points):
-        stimuli.append({"id": f"A{i+1}", "coords": p, "category": "A"})
-    for i, p in enumerate(cat_B_points):
-        stimuli.append({"id": f"B{i+1}", "coords": p, "category": "B"})
+    Category A: Centroid at (2.0, 2.0).
+        - A_Freq: (1.0, 2.0). Distance 1.0 from Centroid. Frequency: HIGH.
+        - A_Rare: (3.0, 2.0). Distance 1.0 from Centroid. Frequency: LOW.
+        - A_Context: Other points to form the cluster.
+    
+    Category B: Centroid at (6.0, 6.0). 
+        - Distant contrast category.
+    """
+    
+    # Category A (Cluster around 2,2)
+    # A_Freq and A_Rare are equidistant from mean (2,2)
+    cat_A_stimuli = [
+        {"id": "A_Freq", "coords": (1.0, 2.0), "type": "frequent"},
+        {"id": "A_Rare", "coords": (3.0, 2.0), "type": "rare"},
         
-    return stimuli
-
-def encode_item(stimulus):
-    return np.array([stimulus["coords"][0], stimulus["coords"][1]]), \
-           np.array([1.0, 0.0] if stimulus["category"] == "A" else [0.0, 1.0])
-
-def run():
-    random_seeds = [RANDOM_SEED + i * 31 for i in range(5)]
-    blocks = 10
-    epochs = 4
-    rows = []
+        # Context items to stable the concept A
+        {"id": "A_Context_1", "coords": (2.0, 1.0), "type": "rare"}, 
+        {"id": "A_Context_2", "coords": (2.0, 3.0), "type": "rare"},
+        {"id": "A_Context_3", "coords": (2.0, 2.0), "type": "rare"}, # Prototype
+    ]
     
-    freq_multiplier = 5  # Frequent A1 is 5x more likely
+    # Category B (Cluster around 6,6)
+    cat_B_stimuli = [
+        {"id": "B_1", "coords": (5.0, 6.0), "type": "rare"},
+        {"id": "B_2", "coords": (6.0, 5.0), "type": "rare"},
+        {"id": "B_3", "coords": (6.0, 6.0), "type": "rare"},
+        {"id": "B_4", "coords": (7.0, 6.0), "type": "rare"},
+        {"id": "B_5", "coords": (6.0, 7.0), "type": "rare"},
+    ]
     
-    all_stimuli = generate_stimuli()
-    # Frequent exemplar is A1 (index 0)
-    frequent_id = "A1"
-    
-    for rs in random_seeds:
-        seed(rs)
-        np.random.seed(rs)
+    all_stimuli = []
+    for s in cat_A_stimuli:
+        s["category"] = "A"
+        all_stimuli.append(s)
+    for s in cat_B_stimuli:
+        s["category"] = "B"
+        all_stimuli.append(s)
         
-        # Build training set
-        train_items = []
-        for stim in all_stimuli:
-            count = freq_multiplier if stim["id"] == frequent_id else 1
+    return all_stimuli
+
+def encode_stimulus_for_continuous_tree(stimulus):
+    """
+    Encodes stimulus into (Feature_Vector, Label_Vector).
+    Feature Vector: [x, y]
+    Label Vector: [1, 0] for A, [0, 1] for B.
+    """
+    x_vec = np.array([stimulus["coords"][0], stimulus["coords"][1]])
+    
+    label_vec = np.zeros(2)
+    if stimulus["category"] == "A":
+        label_vec[0] = 1.0
+    else:
+        label_vec[1] = 1.0
+        
+    return x_vec, label_vec
+
+def execute_specific_instance_simulation_nosofsky(number_of_seeds=20):
+    """
+    Runs the simulation.
+    Key Manipulation: 'A_Freq' is presented 5x more often than 'A_Rare'.
+    Observation: Classification probability P(A) should be higher for A_Freq.
+    """
+    results = []
+    
+    freq_multiplier = 5
+    
+    # Dataset definition
+    base_stimuli = generate_nosofsky_1988_stimuli_structure()
+    
+    for s in range(number_of_seeds):
+        seed(s)
+        np.random.seed(s)
+        
+        # Construct Training Set with Frequency Manipulation
+        training_batch = []
+        for item in base_stimuli:
+            count = freq_multiplier if item["type"] == "frequent" else 1
             for _ in range(count):
-                train_items.append(stim)
+                training_batch.append(item)
                 
-        # Test items: All 12 exemplars
-        test_items = all_stimuli
+        # Initialize Continuous Tree
+        # Dims: 2 (x,y), Classes: 2 (A,B)
+        tree = CobwebContinuousTree(2, 2, alpha=0.45) 
         
-        for epoch in range(1, epochs + 1):
-            # 2 dimensions (x, y), 2 labels (A, B)
-            model = CobwebContinuousTree(2, 2, alpha=0.8)
+        # Train (Multiple Blocks)
+        epochs = 5
+        for e in range(epochs):
+            shuffle(training_batch)
+            for item in training_batch:
+                x, y = encode_stimulus_for_continuous_tree(item)
+                tree.ifit(x, y)
+                
+        # Test (on distinctive exemplars)
+        # We test specifically on A_Freq and A_Rare
+        test_targets = [x for x in base_stimuli if x["id"] in ["A_Freq", "A_Rare"]]
+        
+        for t in test_targets:
+            x_query, _ = encode_stimulus_for_continuous_tree(t)
             
-            for block in range(1, blocks + 1):
-                shuffle(train_items)
-                for item in train_items:
-                    x, y = encode_item(item)
-                    model.ifit(x, y)
-                    
-                # Evaluate
-                for stim in test_items:
-                    x, _ = encode_item(stim)
-                    # predict takes (features, label_buffer, num_nodes, greedy?)
-                    prediction = model.predict(x, np.zeros(2), 100, False)
-                    
-                    prob_a = float(prediction[0])
-                    prob_b = float(prediction[1])
-                    
-                    rows.append({
-                        "seed": rs,
-                        "epoch": epoch,
-                        "block": block,
-                        "stimulus": stim["id"],
-                        "category": stim["category"],
-                        "prob_A": prob_a,
-                        "prob_B": prob_b,
-                        "is_frequent": (stim["id"] == frequent_id)
-                    })
+            # Predict
+            # Args: (instance, label_buffer, num_nodes_to_search, greedy)
+            prediction = tree.predict(x_query, np.zeros(2), 200, False)
+            
+            prob_A = prediction[0]
+            
+            # Distance check (Sanity)
+            dist_to_mean = ((t["coords"][0]-2.0)**2 + (t["coords"][1]-2.0)**2)**0.5
+            
+            results.append({
+                "seed": s,
+                "stimulus_id": t["id"],
+                "frequency_condition": t["type"], # frequent vs rare
+                "distance_to_prototype": dist_to_mean,
+                "prob_class_A": prob_A
+            })
+            
+    return results
 
-    df = pd.DataFrame(rows)
-    results_dir = Path(__file__).resolve().parent / "results"
-    results_dir.mkdir(parents=True, exist_ok=True)
-    df.to_csv(str(results_dir / "exp_specific_instance_continuous.csv"), index=False)
+def run_and_save_specific_instance_results():
+    results = execute_specific_instance_simulation_nosofsky(number_of_seeds=30)
     
+    df = pd.DataFrame(results)
+    
+    out_dir = Path(__file__).resolve().parent / "results"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "exp_specific_instance_continuous.csv"
+    
+    df.to_csv(out_path, index=False)
+    print(f"Specific Instance Effect Results saved to {out_path}")
+    
+    # Metadata
     metadata = {
-        "experiment": "specific_instance_continuous",
-        "citation": "Nosofsky (1988)",
-        "expected_effect": "Frequent exemplar (A1) should have higher classification accuracy/confidence than equidistant rare exemplars."
+        "experiment": "Specific Instance Effect (Nosofsky 1988)",
+        "hypothesis": "High frequency exemplar (A_Freq) has higher P(A) than equidistant rare exemplar (A_Rare)."
     }
-    with open(results_dir / "metadata.json", "w") as f:
+    with open(out_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
 
 if __name__ == "__main__":
-    run()
+    run_and_save_specific_instance_results()

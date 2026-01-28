@@ -1,5 +1,4 @@
 {
-  "experiment": "specific_instance_continuous",
-  "citation": "Nosofsky (1988)",
-  "expected_effect": "Frequent exemplar (A1) should have higher classification accuracy/confidence than equidistant rare exemplars."
+  "experiment": "Specific Instance Effect (Nosofsky 1988)",
+  "hypothesis": "High frequency exemplar (A_Freq) has higher P(A) than equidistant rare exemplar (A_Rare)."
 }
