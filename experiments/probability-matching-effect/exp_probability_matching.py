@@ -143,7 +143,7 @@ def run():
             # Predict
             # Returns {attr_id: {val_id: prob}}
             # We want prob of Disease=Rare
-            probs = tree.predict(encoded_test, 100, True)
+            probs = tree.predict(encoded_test, 30, True)
             
             pred_p_rare = 0.0
             if disease_attr_id in probs and rare_val_id in probs[disease_attr_id]:
