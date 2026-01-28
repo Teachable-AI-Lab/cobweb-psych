@@ -1,29 +1,9 @@
 {
-  "experiment": "fan_effect",
-  "citation": "Anderson (1974)",
-  "fan_sizes": [
+  "description": "Fan Effect Simulation (Anderson 1974 / Reder & Ross 1983)",
+  "prediction": "RT (1/Prob) should increase with Fan Size",
+  "fan_sizes_tested": [
     1,
-    2,
-    4,
-    8
-  ],
-  "mean_prob_by_fan": [
-    {
-      "fan_size": 1,
-      "prob": 0.6816329407259151
-    },
-    {
-      "fan_size": 2,
-      "prob": 0.41512857834679345
-    },
-    {
-      "fan_size": 4,
-      "prob": 0.2289788132821219
-    },
-    {
-      "fan_size": 8,
-      "prob": 0.12046265649011359
-    }
-  ],
-  "expected_effect": "Retrieval probability decreases with increasing fan size"
+    3,
+    5
+  ]
 }
