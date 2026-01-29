@@ -1,4 +1,7 @@
 {
-  "experiment": "Specific Instance Effect (Nosofsky 1988)",
-  "hypothesis": "High frequency exemplar (A_Freq) has higher P(A) than equidistant rare exemplar (A_Rare)."
+  "experiment": "Hayes-Roth & Hayes-Roth (1977) Replication",
+  "description": "Specific Instance Effect using 5-feature discrete stimuli.",
+  "manipulation": "Orthogonal Distance (from Prototype) vs Frequency.",
+  "dimensions": "3 Relevant + 2 Irrelevant (Distractors)",
+  "key_comparison": "A_Freq (Dist 1, High Freq) vs A_Proto (Dist 0, Zero Freq)"
 }
