@@ -7,10 +7,10 @@ import json
 
 # Category-label / feedback effect (Posner & Keele, 1968; Homa & Cultice, 1984).
 # Replication of Homa & Cultice (1984) methodology.
+#
 # Stimuli: 9-dot random patterns (18 continuous dimensions) in 50x50 grid.
 # Categories: 3 (A, B, C) of unequal size (3, 6, 9 exemplars).
 # Conditions: Feedback (Corrective vs None) x Distortion (Low, Mixed, High).
-# (Note: Med also supported).
 
 RANDOM_SEED = 12345
 
@@ -19,19 +19,26 @@ def generate_prototype(dims=18):
     return [np.random.uniform(0, 50) for _ in range(dims)]
 
 def generate_distortion(prototype, level_name):
-    # Homa & Cultice (1984) displacement levels
+    # Homa & Cultice (1984) specify 'Average Euclidean Displacement' per dot.
+    # For a 2D Gaussian displacement (X, Y ~ N(0, sigma^2)), the Mean Distance (Rayleigh mean) is sigma * sqrt(pi/2) ~= 1.2533 * sigma.
+    # Therefore, sigma = Mean_Displacement / 1.2533.
+    
+    mean_displacement = 0.0
     if level_name == 0 or level_name == "Prototype":
         return list(prototype)
     
-    sigma = 0.0
     if level_name == 1 or level_name == "Low":
-        sigma = 1.10
+        mean_displacement = 1.10
     elif level_name == 2 or level_name == "Medium":
-        sigma = 2.90
+        mean_displacement = 2.90
     elif level_name == 3 or level_name == "High":
-        sigma = 4.80
+        mean_displacement = 4.80
+        
+    # Scale sigma
+    sigma = mean_displacement / 1.2533
     
-    # Note: Mixed is handled by calling this with specific levels
+    # Apply displacement to each coordinate
+    # Note: Text says "displaced... about X units". Assuming isotropic Gaussian noise.
     return [p + gauss(0, sigma) for p in prototype]
 
 def encode_item(vector, category_val=None):
@@ -40,24 +47,53 @@ def encode_item(vector, category_val=None):
     feat_arr = np.array(vector, dtype=float)
     label_arr = np.zeros(3) # 3 categories
     
-    if category_val is not None and category_val != -1: # -1 for None category
+    if category_val is not None and category_val != -1: 
         label_arr[int(category_val)] = 1.0
         
     return feat_arr, label_arr
 
+def score_unsupervised_alignment(leaf_assignments, true_labels):
+    """
+    Scores unsupervised clustering by mapping each Leaf to its majority True Label.
+    Homa's 'Maximizing' scoring logic: "Working backward... maximized for three identifiable categories"
+    This approach calculates 'Cluster Purity' relative to the targets.
+    
+    leaf_assignments: List of leaf node objects (or IDs)
+    true_labels: List of int (0, 1, 2)
+    """
+    if not leaf_assignments: return 0.0
+    
+    # Map Leaf -> Counter of True Labels
+    leaf_map = {}
+    for leaf, label in zip(leaf_assignments, true_labels):
+        if leaf not in leaf_map:
+            leaf_map[leaf] = {0:0, 1:0, 2:0}
+        leaf_map[leaf][label] += 1
+        
+    # Greedily assign Leaf -> Predicted Label
+    # Note: Ideally we find optimal permutation (Hungarian Algorithm), 
+    # but Homa says "maximized for each trial". A simple majority vote per cluster 
+    # approximates the best a subject could identify "This pile is A".
+    
+    correct = 0
+    total = len(true_labels)
+    
+    for leaf, counts in leaf_map.items():
+        # Get the label that this leaf captures most
+        # Logic: If a leaf has {A:5, B:1}, we count 5 correct.
+        best_label_count = max(counts.values())
+        correct += best_label_count
+        
+    return correct / total
+
 def run():
-    # 5 replications (subjects per condition logic)
+    # 5 replications per condition as placeholder (Paper had 8 conds x 24 subjs)
     random_seeds = [RANDOM_SEED + i * 31 for i in range(5)]
     
-    # Conditions
-    # Feedback: 1.0 (Corrective), 0.0 (No Feedback)
-    feedback_conditions = [1.0, 0.0]
-    # Distortion: Low, Medium, High, Mixed
+    feedback_conditions = [1.0, 0.0] # 1=Feedback, 0=No Feedback
     distortion_conditions = ["Low", "Medium", "High", "Mixed"]
     
-    # Category Sizes: A=3, B=6, C=9
     cat_sizes = [3, 6, 9]
-    cat_names = ["A", "B", "C"]
     
     epochs = 8 
     rows = []
@@ -74,16 +110,7 @@ def run():
             for fb_rate in feedback_conditions:
                 
                 # --- Construct Training Set ---
-                # 18 stimuli total.
-                # If Mixed: distributed equally across levels.
-                #   Size 3: 1 L, 1 M, 1 H
-                #   Size 6: 2 L, 2 M, 2 H
-                #   Size 9: 3 L, 3 M, 3 H
-                # If Low/Med/High: all items at that level.
-                
-                training_items = [] # list of (vector, cat_idx)
-                
-                # Save old items for transfer phase identification
+                training_items = [] # list of {"vector":..., "cat":..., "level":...}
                 old_items_by_cat = {0: [], 1: [], 2: []}
                 
                 for cat_idx, size in enumerate(cat_sizes):
@@ -91,154 +118,240 @@ def run():
                     
                     levels_to_gen = []
                     if dist_cond == "Mixed":
-                        # Equal split
-                        n_per_level = size // 3
-                        levels_to_gen = ["Low"]*n_per_level + ["Medium"]*n_per_level + ["High"]*n_per_level
+                        # "3-instance cat: 1L, 1M, 1H. 6-inst: 2L, 2M, 2H..."
+                        k = size // 3
+                        levels_to_gen = ["Low"]*k + ["Medium"]*k + ["High"]*k
                     else:
                         levels_to_gen = [dist_cond] * size
                         
                     for lvl in levels_to_gen:
-                        item = generate_distortion(p, lvl)
-                        training_items.append((item, cat_idx))
-                        old_items_by_cat[cat_idx].append(item)
+                        item_vec = generate_distortion(p, lvl)
+                        
+                        item_obj = {
+                            "vector": item_vec, 
+                            "cat": cat_idx, 
+                            "level": lvl
+                        }
+                        
+                        training_items.append(item_obj)
+                        old_items_by_cat[cat_idx].append(item_obj)
                 
                 # --- Model Training ---
+                # Homa Analysis: Feedback vs No Feedback
                 model = CobwebContinuousTree(18, 3, alpha=0.1) 
                 
-                # 8 Epochs / Trials
-                # Logic: Show 18 items in random order
                 for epoch in range(1, epochs + 1):
                     current_order = list(training_items)
                     shuffle(current_order)
                     
-                    correct_count = 0
-                    for item, cat_idx in current_order:
-                        # Encode
-                        if fb_rate > 0: # Feedback condition
-                             x, y = encode_item(item, cat_idx)
-                        else: # No feedback condition: label not provided during training interaction
-                             x, _ = encode_item(item, cat_idx)
-                             y = np.zeros(3) # "No Feedback"
-
-                        # Predict before learning (to score learning trials)
-                        # "Subject was told... task was to determine..."
-                        # We score their prediction accuracy
-                        pred = model.predict(x, np.zeros(3), 100, False)
-                        pred_cat = np.argmax(pred) if np.sum(pred) > 0 else -1
-                        
-                        if pred_cat == cat_idx:
-                            correct_count += 1
-                            
-                        # Learn
-                        model.ifit(x, y)
+                    # Store for scoring
+                    if fb_rate == 0:
+                        epoch_leaves = []
+                        epoch_truths = []
                     
-                    # Record Learning Accuracy
+                    correct_count_fb = 0
+                    
+                    for item in current_order:
+                        # Feed to Model
+                        vec = item["vector"]
+                        cat = item["cat"]
+                        
+                        if fb_rate > 0:
+                            # Feedback Condition
+                            x, y = encode_item(vec, cat)
+                            
+                            # Predict (Score)
+                            pred = model.predict(x, np.zeros(3), 100, True)
+                            pred_cat = np.argmax(pred) if np.sum(pred) > 0 else -1
+                            if pred_cat == cat: correct_count_fb += 1
+                            
+                            # Train
+                            model.ifit(x, y)
+                            
+                        else:
+                            # No Feedback Condition
+                            x, _ = encode_item(vec, None) # No label
+                            y_dummy = np.zeros(3)
+                            
+                            # Predict (Categorize for maximized scoring)
+                            # We use .get_leaf() to get the concept node
+                            leaf = model.get_leaf(x, y_dummy)
+                            epoch_leaves.append(leaf)
+                            epoch_truths.append(cat)
+                            
+                            # Train (Unsupervised)
+                            model.ifit(x, y_dummy)
+                            
+                    # Calculate Accuracy
+                    if fb_rate > 0:
+                        acc = correct_count_fb / 18.0
+                    else:
+                        acc = score_unsupervised_alignment(epoch_leaves, epoch_truths)
+                        
                     rows.append({
                         "seed": rs,
                         "feedback": "Feedback" if fb_rate > 0 else "No Feedback",
                         "learning_distortion": dist_cond,
                         "phase": "learning",
                         "epoch": epoch,
-                        "accuracy": correct_count / 18.0,
+                        "accuracy": acc,
                         "stim_type": "learning_set"
                     })
 
                 # --- Construct Transfer Set (80 items) ---
-                transfer_items = []
+                transfer_list = []
                 
-                # 1. 60 Original Categories
-                # A) 9 Old Patterns (3 from each cat)
-                # "For subjects who trained on mixed... old patterns equally represented by L, M, H" (so 1 of each per cat selection)
-                # "For subjects on L/M/H... drawn equally from cat at that level"
+                # A) 9 Old Patterns
                 for c_idx in range(3):
-                    # We have `size` items in old_items_by_cat[c_idx]
-                    # We need 3. 
-                    # If Mixed, we have 1L, 1M, 1H (cat A), 2L 2M 2H (cat B), 3L 3M 3H (cat C).
-                    # Need to select 3 to represent levels equally if possible.
-                    # For Cat A (size 3), take all 3.
-                    # For Cat B (size 6), take 3.
-                    # For Cat C (size 9), take 3.
-                    # Logic: Just sample 3 random from the available training set for that cat.
-                    # (Assuming random selection achieves the 'drawn' criteria or we implement strict logic)
                     olds = old_items_by_cat[c_idx]
-                    selected_olds = list(olds)
-                    shuffle(selected_olds)
-                    selected_olds = selected_olds[:3]
+                    selected = []
                     
-                    for item in selected_olds:
-                        transfer_items.append((item, c_idx, "Old"))
+                    if dist_cond == "Mixed":
+                        # "Equally represented by L, M, H" -> 1 of each
+                        by_level = {"Low": [], "Medium": [], "High": []}
+                        for o in olds: by_level[o["level"]].append(o)
                         
-                # B) 6 Prototypes (2 copies of each of 3 protos)
+                        # Grab 1 from each
+                        try:
+                            # Homa says "drawn equally". Since we generated balanced, this works.
+                            # Use random choice if multiple exist
+                            selected.append(choice(by_level["Low"]))
+                            selected.append(choice(by_level["Medium"]))
+                            selected.append(choice(by_level["High"]))
+                        except IndexError:
+                            # Fallback if generation failed logic (shouldn't happen)
+                            selected = olds[:3]
+                    else:
+                        # Drawn equally from available (all same level)
+                        shuffle(olds)
+                        selected = olds[:3]
+                        
+                    for s in selected:
+                        transfer_list.append((s["vector"], c_idx, "Old"))
+                        
+                # B) 6 Prototypes (2 copies of each)
                 for c_idx in range(3):
                     p = protos[c_idx]
-                    transfer_items.append((p, c_idx, "Prototype"))
-                    transfer_items.append((p, c_idx, "Prototype"))
+                    transfer_list.append((p, c_idx, "Prototype"))
+                    transfer_list.append((p, c_idx, "Prototype"))
                     
-                # C) 45 New Patterns (15 from each cat: 5 Low, 5 Med, 5 High)
+                # C) 45 New Patterns (15/cat: 5L, 5M, 5H)
                 for c_idx in range(3):
                     p = protos[c_idx]
-                    for _ in range(5): transfer_items.append((generate_distortion(p, "Low"), c_idx, "New_Low"))
-                    for _ in range(5): transfer_items.append((generate_distortion(p, "Medium"), c_idx, "New_Medium"))
-                    for _ in range(5): transfer_items.append((generate_distortion(p, "High"), c_idx, "New_High"))
+                    for _ in range(5): transfer_list.append((generate_distortion(p, "Low"), c_idx, "New_Low"))
+                    for _ in range(5): transfer_list.append((generate_distortion(p, "Medium"), c_idx, "New_Medium"))
+                    for _ in range(5): transfer_list.append((generate_distortion(p, "High"), c_idx, "New_High"))
 
-                # 2. 20 Unrelated Patterns
-                # From 2 random protos (10 each)
-                # Per proto: 3 Low, 3 Medium, 4 High (Sum=10)
+                # D) 20 Unrelated Patterns (10 from U1, 10 from U2)
+                # "10 each... 6 were low level, 6 were medium level, and 8 were high-level" (Total 20)
+                # Wait, "10 each" usually implies symmetric composition. 
+                # If total is 20 and counts are 6,6,8, split is 3,3,4 per proto.
                 for u_idx in range(2):
                     p = unrelated_protos[u_idx]
-                    for _ in range(3): transfer_items.append((generate_distortion(p, "Low"), -1, "Unrelated"))
-                    for _ in range(3): transfer_items.append((generate_distortion(p, "Medium"), -1, "Unrelated"))
-                    for _ in range(4): transfer_items.append((generate_distortion(p, "High"), -1, "Unrelated"))
+                    for _ in range(3): transfer_list.append((generate_distortion(p, "Low"), -1, "Unrelated"))
+                    for _ in range(3): transfer_list.append((generate_distortion(p, "Medium"), -1, "Unrelated"))
+                    for _ in range(4): transfer_list.append((generate_distortion(p, "High"), -1, "Unrelated"))
                     
-                shuffle(transfer_items)
+                shuffle(transfer_list)
                 
                 # --- Transfer Evaluation ---
-                correct_count_transfer = 0
-                # Evaluate by stim type
-                results_by_type = {} 
+                # Homa scoring: Maximize number correct given three identifiable categories.
+                # For Feedback subjects: They rely on learned labels A/B/C.
+                # For No-Feedback: We should technically do the maximizing again?
+                # Homa: "If subject appeared to switch... transfer was scored to maximize."
+                # As Cobweb is a consistent model, for No-Feed we continue using Unsupervised Scoring?
+                # However, usually we test if the concepts align with True categories.
+                # Let's use the same Predict vs Unsupervised logic.
                 
-                for item, true_cat, s_type in transfer_items:
-                    x, _ = encode_item(item, None)
-                    # No learning during transfer
-                    pred = model.predict(x, np.zeros(3), 100, False)
-                    
-                    # Classification Logic
-                    # If max prob is low? The prompt says "if however they felt pattern belonged to none... record 'none'".
-                    # We can use a threshold or implicit 'None' bucket if model mass is nowhere?
-                    # But Cobweb prob sums to 1.
-                    # Simplification: -1 is "Unrelated".
-                    # If true_cat is -1, correct if we assume model predicts "None".
-                    # But model predicts A/B/C.
-                    # Let's count accuracy only on A/B/C items for the main metric, or handle None.
-                    # If we treat 'None' as "Low Confidence" or "Max < 0.33"?
-                    # We'll stick to A/B/C accuracy for now as 'None' logic is model-dependent.
-                    
-                    pred_cat = np.argmax(pred)
-                    
-                    is_correct = 0
-                    if true_cat != -1:
-                        if pred_cat == true_cat:
-                            is_correct = 1
-                    else:
-                        # True category is None. 
-                        # If we forced a choice, it's always wrong. 
-                        # Unless we have a 'None' output.
-                        # For generated stats, we usually exclude 'None' items from classification accuracy 
-                        # unless we have a rejection mechanism.
-                        is_correct = 0 
+                if fb_rate > 0:
+                    # Supervised Prediction
+                    for vec, true_cat, s_type in transfer_list:
+                        x, _ = encode_item(vec, None)
+                        pred = model.predict(x, np.zeros(3), 100, False)
+                        pred_cat = np.argmax(pred)
                         
-                    # Save row
-                    rows.append({
-                        "seed": rs,
-                        "feedback": "Feedback" if fb_rate > 0 else "No Feedback",
-                        "learning_distortion": dist_cond,
-                        "phase": "transfer",
-                        "epoch": epochs + 1,
-                        "accuracy": is_correct,
-                        "stim_type": s_type,
-                        "true_cat": true_cat,
-                        "pred_cat": pred_cat
-                    })
+                        is_correct = 0
+                        if true_cat != -1 and pred_cat == true_cat:
+                            is_correct = 1
+                            
+                        rows.append({
+                            "seed": rs,
+                            "feedback": "Feedback",
+                            "learning_distortion": dist_cond,
+                            "phase": "transfer",
+                            "epoch": epochs + 1,
+                            "accuracy": is_correct,
+                            "stim_type": s_type
+                        })
+                else:
+                    # Unsupervised Scoring for Transfer
+                    # Collect all transfer items, cluster them, then score purity?
+                    # Homa implies the "consistency" is from learning to transfer.
+                    # We will treat the transfer simply as: Do the transfer items cluster 
+                    # into the nodes established for A, B, C?
+                    
+                    # Store all assignments
+                    trans_leaves = []
+                    trans_truths = []
+                    row_metadata = []
+                    
+                    for vec, true_cat, s_type in transfer_list:
+                        x, _ = encode_item(vec, None)
+                        # We do NOT train on transfer
+                        y_dummy = np.zeros(3)
+                        leaf = model.get_leaf(x, y_dummy)
+                        
+                        trans_leaves.append(leaf)
+                        trans_truths.append(true_cat)
+                        row_metadata.append(s_type)
+
+                    # We need to assign labels to leaves based on... what?
+                    # The text: "Scored to maximize number correct... if subject appeared to switch use of category labels".
+                    # This implies optimizing the map on the Transfer Set itself? 
+                    # Or using the map from Learning?
+                    # Usually "Transfer performance scored to maximize" means optimizing the mapping on the transfer block.
+                    # So we call score_unsupervised_alignment on the transfer set data.
+                    # Note: Unrelated items (-1) should arguably be excluded from the purity map optimization 
+                    # OR treated as a 4th category? "Three identifiable categories were required".
+                    # So we filter out -1 for the mapping calculation.
+                    
+                    # Filter for scoring (Only A/B/C items)
+                    valid_indices = [i for i, t in enumerate(trans_truths) if t != -1]
+                    valid_leaves = [trans_leaves[i] for i in valid_indices]
+                    valid_truths = [trans_truths[i] for i in valid_indices]
+                    
+                    # Establish Mapping (Greedy Majority Vote)
+                    leaf_to_label = {}
+                    leaf_counts = {}
+                    for lf, lab in zip(valid_leaves, valid_truths):
+                        if lf not in leaf_counts: leaf_counts[lf] = {0:0, 1:0, 2:0}
+                        leaf_counts[lf][lab] += 1
+                        
+                    for lf, counts in leaf_counts.items():
+                        leaf_to_label[lf] = max(counts, key=counts.get)
+                        
+                    # Now score ALL items based on this map (ignoring unrelated for "Accuracy" stats usually)
+                    for i, s_type in enumerate(row_metadata):
+                        true_cat = trans_truths[i]
+                        leaf = trans_leaves[i]
+                        
+                        # Predicted Label
+                        pred_cat = leaf_to_label.get(leaf, -1) # -1 if leaf only contained noise or empty?
+                        
+                        is_correct = 0
+                        if true_cat != -1:
+                            if pred_cat == true_cat:
+                                is_correct = 1
+                        # Save
+                        rows.append({
+                            "seed": rs,
+                            "feedback": "No Feedback",
+                            "learning_distortion": dist_cond,
+                            "phase": "transfer",
+                            "epoch": epochs + 1,
+                            "accuracy": is_correct,
+                            "stim_type": s_type
+                        })
 
     df = pd.DataFrame(rows)
     results_dir = Path(__file__).resolve().parent / "results"
@@ -246,9 +359,8 @@ def run():
     df.to_csv(str(results_dir / "exp_category_label_feedback_continuous.csv"), index=False)
 
     metadata = {
-        "experiment": "category_label_feedback_continuous",
-        "description": "Posner & Keele (1968) / Homa (1984) replication with Mixed distortion",
-        "expected_effect": "Feedback > No Feedback. Mixed learning -> better transfer to new/high distortion."
+        "experiment": "Category Label Feedback (Homa & Cultice 1984)",
+        "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback",
     }
     with open(results_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)

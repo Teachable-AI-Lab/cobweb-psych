@@ -1,5 +1,4 @@
 {
-  "experiment": "category_label_feedback_continuous",
-  "description": "Posner & Keele (1968) / Homa (1984) replication with Mixed distortion",
-  "expected_effect": "Feedback > No Feedback. Mixed learning -> better transfer to new/high distortion."
+  "experiment": "Category Label Feedback (Homa & Cultice 1984)",
+  "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback"
 }
