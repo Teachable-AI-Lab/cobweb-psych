@@ -1,23 +1,9 @@
 {
-  "experiment": "inverse_base_rate_effect",
-  "citation": "Medin, D. L., & Edelson, S. M. (1988). Problem structure and base-rate information. JEP: General, 117(1), 68-85.",
-  "random_seed": 12345,
-  "seeds_used": [
-    12345,
-    12376,
-    12407,
-    12438,
-    12469
+  "experiment": "Homa & Vosburgh (1976) Exp 1",
+  "factors": [
+    "Condition (Uniform-Low, Mixed)",
+    "Category Size (3, 6, 9)",
+    "Distortion (P, L, M, H)"
   ],
-  "ratio_conditions": [
-    1.0,
-    2.0,
-    4.0
-  ],
-  "num_blocks": 15,
-  "num_epochs": 4,
-  "training_design": "AB->Common (frequent), AC->Rare (infrequent)",
-  "critical_test": "BC (ambiguous)",
-  "ibre_rate_observed": 0.2,
-  "expected_effect": "On BC trials, bias toward Rare despite lower base rate (inverse base-rate effect)"
+  "goal": "Category Breadth effect on abstraction."
 }
