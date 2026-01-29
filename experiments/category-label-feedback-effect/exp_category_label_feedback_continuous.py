@@ -87,8 +87,8 @@ def score_unsupervised_alignment(leaf_assignments, true_labels):
     return correct / total
 
 def run():
-    # 5 replications per condition as placeholder (Paper had 8 conds x 24 subjs)
-    random_seeds = [RANDOM_SEED + i * 31 for i in range(5)]
+    # 24 subjects per condition (Paper says 192 total, 8 conditions -> 24/cond)
+    random_seeds = [RANDOM_SEED + i * 31 for i in range(24)]
     
     feedback_conditions = [1.0, 0.0] # 1=Feedback, 0=No Feedback
     distortion_conditions = ["Low", "Medium", "High", "Mixed"]
@@ -103,8 +103,16 @@ def run():
         np.random.seed(rs)
         
         # 1. Generate Prototypes (A, B, C) and Unrelated (U1, U2)
-        protos = [generate_prototype() for _ in range(3)]
-        unrelated_protos = [generate_prototype() for _ in range(2)]
+        # 5 total prototypes. First 3 used for categories, last 2 for unrelated.
+        # "Balanced across category size... Latin square" -> Randomized assignment for simulation.
+        all_protos = [generate_prototype() for _ in range(5)]
+        
+        # Shuffle the 3 learning prototypes to randomize assignment to sizes 3, 6, 9
+        learning_indices = [0, 1, 2]
+        shuffle(learning_indices)
+        
+        protos = [all_protos[i] for i in learning_indices]
+        unrelated_protos = all_protos[3:]
         
         for dist_cond in distortion_conditions:
             for fb_rate in feedback_conditions:
@@ -360,7 +368,7 @@ def run():
 
     metadata = {
         "experiment": "Category Label Feedback (Homa & Cultice 1984)",
-        "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback",
+        "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback; N=24 subjects per condition; Balanced prototype assignment.",
     }
     with open(results_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
