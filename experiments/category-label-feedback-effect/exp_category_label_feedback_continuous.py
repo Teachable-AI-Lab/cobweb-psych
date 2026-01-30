@@ -98,18 +98,23 @@ def run():
     epochs = 8 
     rows = []
     
-    for rs in random_seeds:
+    for subject_idx, rs in enumerate(random_seeds):
         seed(rs)
         np.random.seed(rs)
         
         # 1. Generate Prototypes (A, B, C) and Unrelated (U1, U2)
         # 5 total prototypes. First 3 used for categories, last 2 for unrelated.
-        # "Balanced across category size... Latin square" -> Randomized assignment for simulation.
+        # "Balanced across category size... Latin square"
+        # We rotate assignment of prototypes to sizes (3, 6, 9) based on subject index (mod 3).
         all_protos = [generate_prototype() for _ in range(5)]
         
-        # Shuffle the 3 learning prototypes to randomize assignment to sizes 3, 6, 9
-        learning_indices = [0, 1, 2]
-        shuffle(learning_indices)
+        group_idx = subject_idx % 3
+        if group_idx == 0:
+            learning_indices = [0, 1, 2]
+        elif group_idx == 1:
+            learning_indices = [1, 2, 0]
+        else:
+            learning_indices = [2, 0, 1]
         
         protos = [all_protos[i] for i in learning_indices]
         unrelated_protos = all_protos[3:]
@@ -368,7 +373,7 @@ def run():
 
     metadata = {
         "experiment": "Category Label Feedback (Homa & Cultice 1984)",
-        "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback; N=24 subjects per condition; Balanced prototype assignment.",
+        "revisions": "Adjusted sigma for mean displacement; Implemented Maximized Scoring for No-Feedback; N=24/cond; Latin Square Proto Balancing.",
     }
     with open(results_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)

@@ -37,15 +37,12 @@ def plot_learning_curves(df: pd.DataFrame, out_dir: Path):
         # Filter data for this condition
         data = df_learn[df_learn[cond_col] == cond]
         
-        # Aggregate mean accuracy over seeds
-        # Group by epoch and learning_distortion
+        # Plot with Seaborn aggregation (calculates CI/Error Bands automatically)
         dist_col = "learning_distortion" if "learning_distortion" in data.columns else "distortion"
-        
-        agg = data.groupby(["epoch", dist_col], as_index=False)["accuracy"].mean()
         
         plt.figure(figsize=(8, 6))
         sns.lineplot(
-            data=agg, x="epoch", y="accuracy", hue=dist_col,
+            data=data, x="epoch", y="accuracy", hue=dist_col,
             style=dist_col, markers=True, dashes=False, linewidth=2, palette="viridis"
         )
         
@@ -56,8 +53,8 @@ def plot_learning_curves(df: pd.DataFrame, out_dir: Path):
         plt.legend(title="Learning Distortion")
         
         # Ensure integer ticks for epoch if numeric
-        if pd.api.types.is_numeric_dtype(agg["epoch"]):
-            plt.xticks(sorted(agg["epoch"].unique()))
+        if pd.api.types.is_numeric_dtype(data["epoch"]):
+            plt.xticks(sorted(data["epoch"].unique()))
             
         plt.grid(True, linestyle="--", alpha=0.6)
         

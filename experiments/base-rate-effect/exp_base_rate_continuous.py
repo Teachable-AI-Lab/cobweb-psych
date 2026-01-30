@@ -32,11 +32,7 @@ def generate_distortion(prototype, level_name):
     # High: 7.7 bits
     #
     # We map these to sigma values for Gaussian displacement.
-    # Assuming proportionality to Homa & Cultice units or deriving arbitrary scale that strictly orders them.
-    # Let's use:
-    # Low ~ 1.0
-    # Med ~ 2.0
-    # High ~ 4.0
+    # Using the ratios: 3.5:5.6:7.7 -> 1.0 : 1.6 : 2.2
     
     if level_name == "Prototype":
         return list(prototype)
@@ -45,9 +41,9 @@ def generate_distortion(prototype, level_name):
     if level_name == "Low" or level_name == "L":
         sigma = 1.0
     elif level_name == "Medium" or level_name == "M":
-        sigma = 2.0
+        sigma = 1.6
     elif level_name == "High" or level_name == "H":
-        sigma = 4.0
+        sigma = 2.2
         
     return [p + gauss(0, sigma) for p in prototype]
 
@@ -72,7 +68,7 @@ def run_experiment():
     # Paper: 36 subjects per condition. Latin square.
     # We will simulate N seeds per condition with randomized size assignment.
     
-    n_seeds = 12 # Enough to smooth
+    n_seeds = 36 # Correct number of subjects
     
     rows = []
     
@@ -121,11 +117,10 @@ def run_experiment():
                     
             # --- Learning Phase ---
             # "Learning was terminated once two consecutive errorless trials had occurred."
-            # We will use a max_epoch cap, but stop if criterion met.
             
-            model = CobwebContinuousTree(18, 3, alpha=0.001) 
+            model = CobwebContinuousTree(18, 3, alpha=1e-6, prior_var=1e-6) 
             
-            max_epochs = 15
+            max_epochs = 30
             consecutive_perfect = 0
             
             for epoch in range(1, max_epochs + 1):
