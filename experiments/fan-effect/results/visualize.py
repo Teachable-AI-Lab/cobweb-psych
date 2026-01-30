@@ -43,7 +43,7 @@ def visualize_fan_effect_results():
     ax.plot(x, p(x), "--", color="#e74c3c", linewidth=2, label=f"Linear Trend (Slope={z[0]:.2f})")
     
     # Formatting
-    ax.set_title("Fan Effect Simulation (Anderson, 1974)\nRetrieval Inteference in Cobweb", fontsize=14, pad=15)
+    ax.set_title("Fan Effect Simulation (Anderson, 1991)\nRetrieval Inteference in Cobweb", fontsize=14, pad=15)
     ax.set_xlabel("Fan Size (Facts associated with Concept)", fontsize=12)
     ax.set_ylabel("Simulated Reaction Time (1 / Probability)", fontsize=12)
     ax.set_xticks(summary["fan_size"].unique())
