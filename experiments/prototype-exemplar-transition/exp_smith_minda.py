@@ -88,9 +88,9 @@ def stimulus_prediction_dataframe(stimulus_te_index, pred_dict,
     return pd.DataFrame([row])
 
 
-random_seeds = [1, 32, 64, 128, 356]
+random_seeds = list(range(16)) # [1, 32, 64, 128, 356]
 blocks = 10
-epochs = 5
+epochs = 1 
 stimuli = [encoding2stimuli(ls) for ls in stimuli]
 
 keys = {}
@@ -118,44 +118,51 @@ for random_seed in random_seeds:
 
     # Preprocess the stimuli data
     seed(random_seed)
-    stimuli_tr_shuffled = sample(stimuli_tr, len(stimuli_tr))
+    # stimuli_tr_shuffled = sample(stimuli_tr, len(stimuli_tr))
+    # stimuli_tr_shuffled = 4*stimuli_tr
+    stimuli_tr_shuffled = [e for e in stimuli_tr]
+    # shuffle(stimuli_tr_shuffled)
 
     # Each random seed executes multiple iterations.
     for epoch in range(1, epochs + 1):
 
         # model = MultinomialCobwebTree()
-        model = CobwebDiscreteTree(alpha=0.5)
+        model = CobwebDiscreteTree(alpha=2)
         print(len(stimuli_tr_shuffled))
         print(blocks)
 
         for block in range(1, blocks + 1):
 
-            # stimuli_tr_shuffled = sample(stimuli_tr_shuffled, len(stimuli_tr_shuffled))
-            shuffle(stimuli_tr_shuffled)
+            for batch in range(4):
 
-            # Train the model:
-            pprint(stimuli_tr_shuffled)
-            model.fit(stimuli_tr_shuffled)
+                # stimuli_tr_shuffled = sample(stimuli_tr_shuffled, len(stimuli_tr_shuffled))
+                shuffle(stimuli_tr_shuffled)
 
-            # Predict:
-            for i in range(len(stimuli_te)):
-                # pred_dict = model.categorize(stimuli_te[i]).get_best(stimuli_te[i]).predict_probs()
-                # pred_dict = model.categorize(stimuli_te[i]).get_basic(1000, 30).predict_probs()
-                pred_dict = model.predict(stimuli_te[i], 1000)
-                
-                pred_dict = {keys_reverse[k]: {values_reverse[v]: pred_dict[k][v] for v in pred_dict[k]} for k in pred_dict}['category']
+                # Train the model:
+                pprint(stimuli_tr_shuffled)
+                model.fit(stimuli_tr_shuffled)
 
-                print(pred_dict)
-                df_stimulus_te = stimulus_prediction_dataframe(i,
-                                                               pred_dict,
-                                                               random_seed,
-                                                               block, epoch)
-                dfs.append(df_stimulus_te)
+                # Predict:
+                for i in range(len(stimuli_te)):
+                    # pred_dict = model.categorize(stimuli_te[i]).get_best(stimuli_te[i]).predict_probs()
+                    # pred_dict = model.categorize(stimuli_te[i]).get_basic(1000, 30).predict_probs()
+                    pred_dict = model.predict(stimuli_te[i], 100)
+                    # pred_dict = model.predict_pmi(stimuli_te[i], keys['category'], 100)
+                    
+                    pred_dict = {keys_reverse[k]: {values_reverse[v]: pred_dict[k][v] for v in pred_dict[k]} for k in pred_dict}['category']
+
+                    print(pred_dict)
+                    df_stimulus_te = stimulus_prediction_dataframe(i,
+                                                                   pred_dict,
+                                                                   random_seed,
+                                                                   block, epoch)
+                    dfs.append(df_stimulus_te)
 
 # visualize(model)
 df = pd.concat(dfs, ignore_index=True)
 results_dir = Path(__file__).resolve().parent / "results"
 results_dir.mkdir(parents=True, exist_ok=True)
-df.to_csv(str(results_dir / f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
+# df.to_csv(str(results_dir / f"exp_smith-minda_blocks{int(blocks)}_nseeds{int(len(random_seeds))}_epoch{epochs}.csv"), index=False)
+df.to_csv(str(results_dir / f"exp_smith-minda.csv"), index=False)
 
 model.dump_json('tree.json')
