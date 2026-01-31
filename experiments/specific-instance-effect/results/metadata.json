@@ -1,5 +1,7 @@
 {
-  "experiment": "specific_instance_continuous",
-  "citation": "Nosofsky (1988)",
-  "expected_effect": "Frequent exemplar (A1) should have higher classification accuracy/confidence than equidistant rare exemplars."
+  "experiment": "Hayes-Roth & Hayes-Roth (1977) Replication",
+  "description": "Specific Instance Effect using 5-feature discrete stimuli.",
+  "manipulation": "Orthogonal Distance (from Prototype) vs Frequency.",
+  "dimensions": "3 Relevant + 2 Irrelevant (Distractors)",
+  "key_comparison": "A_Freq (Dist 1, High Freq) vs A_Proto (Dist 0, Zero Freq)"
 }

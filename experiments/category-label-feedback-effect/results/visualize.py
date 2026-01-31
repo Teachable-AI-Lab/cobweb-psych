@@ -5,111 +5,115 @@ import pandas as pd
 import seaborn as sns
 
 
-def plot_label_feedback(df: pd.DataFrame, out_dir: Path, label: str):
-	"""
-	Plot category-label / feedback effect results.
-	
-	Citation: Posner, M. I., & Keele, S. W. (1968). On the genesis of abstract ideas.
-	          Journal of Experimental Psychology, 77(3, Pt.1), 353–363.
-	
-	Expected: Higher label rates (feedback) improve accuracy, especially for high distortions.
-	"""
-	# Learning curves: accuracy vs block for different label rates
-	mean_acc = df.groupby(["label_rate", "block"], as_index=False)["accuracy"].mean()
-	fig, ax = plt.subplots(figsize=(8, 5))
-	sns.lineplot(
-		data=mean_acc, x="block", y="accuracy", hue="label_rate", marker="o", 
-		ax=ax, palette="viridis", linewidth=2
-	)
-	ax.set_title("Impact of Category Labels on Learning\nPosner & Keele (1968)", fontsize=12)
-	ax.set_ylabel("Classification Accuracy", fontsize=11)
-	ax.set_xlabel("Training Block", fontsize=11)
-	ax.set_ylim(0, 1.05)
-	ax.axhline(0.5, color='gray', linestyle='--', linewidth=0.8, alpha=0.5, label='Chance')
-	ax.legend(title='Label Rate', bbox_to_anchor=(1.05, 1), loc='upper left')
-	fig.tight_layout()
-	fig.savefig(out_dir / f"category_label_feedback_blocks_{label}.png", dpi=200)
+def plot_learning_curves(df: pd.DataFrame, out_dir: Path):
+    """
+    User Request: Plot a separate graph with the X axis being the learning trial 
+    and the Y axis being the accuracy for each label rate (Feedback condition), 
+    with separate lines for each distortion.
+    """
+    # Filter only learning phase
+    if "phase" in df.columns:
+        df_learn = df[df["phase"] == "learning"].copy()
+    else:
+        # Fallback if CSV format is old
+        # But we just updated the script, so assuming new format.
+        # If running on old data, this will fail or return empty.
+        # Let's assume new format "phase" exists.
+        df_learn = df
+    
+    if df_learn.empty:
+        return
+    
+    # Get unique feedback conditions
+    # Column "feedback" (Feedback/No Feedback)
+    if "feedback" in df_learn.columns:
+        cond_col = "feedback"
+    else:
+        cond_col = "label_rate" # Fallback
+    
+    conditions = df_learn[cond_col].unique()
+    
+    for cond in conditions:
+        # Filter data for this condition
+        data = df_learn[df_learn[cond_col] == cond]
+        
+        # Plot with Seaborn aggregation (calculates CI/Error Bands automatically)
+        dist_col = "learning_distortion" if "learning_distortion" in data.columns else "distortion"
+        
+        plt.figure(figsize=(8, 6))
+        sns.lineplot(
+            data=data, x="epoch", y="accuracy", hue=dist_col,
+            style=dist_col, markers=True, dashes=False, linewidth=2, palette="viridis"
+        )
+        
+        plt.title(f"Learning Curve: {cond}", fontsize=14)
+        plt.xlabel("Learning Trial (Epoch)", fontsize=12)
+        plt.ylabel("Accuracy", fontsize=12)
+        plt.ylim(-0.05, 1.05)
+        plt.legend(title="Learning Distortion")
+        
+        # Ensure integer ticks for epoch if numeric
+        if pd.api.types.is_numeric_dtype(data["epoch"]):
+            plt.xticks(sorted(data["epoch"].unique()))
+            
+        plt.grid(True, linestyle="--", alpha=0.6)
+        
+        safe_name = str(cond).replace(" ", "_").lower().replace(".","")
+        plt.tight_layout()
+        plt.savefig(out_dir / f"learning_curve_{safe_name}.png", dpi=200)
+        plt.close()
 
-	# Final accuracy bar plot
-	end_acc = mean_acc.groupby("label_rate", as_index=False).agg(
-		accuracy_end=("accuracy", "last")
-	)
-	fig, ax = plt.subplots(figsize=(6, 4.5))
-	sns.barplot(data=end_acc, x="label_rate", y="accuracy_end", ax=ax, palette="viridis")
-	ax.set_title("End-State Accuracy vs Label Rate\nPosner & Keele (1968)", fontsize=12)
-	ax.set_ylabel("Final Accuracy", fontsize=11)
-	ax.set_xlabel("Label Rate (Feedback Probability)", fontsize=11)
-	ax.set_ylim(0, 1.05)
-	ax.axhline(0.5, color='gray', linestyle='--', linewidth=0.8, alpha=0.5)
-	
-	# Add value annotations
-	for i, row in end_acc.iterrows():
-		ax.text(i, row["accuracy_end"] + 0.02, f'{row["accuracy_end"]:.2f}', 
-		        ha='center', va='bottom', fontsize=9)
-	
-	fig.tight_layout()
-	fig.savefig(out_dir / f"category_label_feedback_final_{label}.png", dpi=200)
-	
-	# Distortion level analysis
-	if "distortion" in df.columns:
-		mean_dist = df.groupby(["label_rate", "distortion"], as_index=False)["accuracy"].mean()
-		fig, ax = plt.subplots(figsize=(8, 5))
-		sns.lineplot(
-			data=mean_dist, x="distortion", y="accuracy", hue="label_rate", 
-			marker="o", ax=ax, palette="viridis", linewidth=2
-		)
-		ax.set_title("Generalization Gradient: Accuracy vs Distortion\nPosner & Keele (1968)", fontsize=12)
-		ax.set_ylabel("Classification Accuracy", fontsize=11)
-		ax.set_xlabel("Distortion Level", fontsize=11)
-		ax.set_ylim(0, 1.05)
-		ax.legend(title='Label Rate', bbox_to_anchor=(1.05, 1), loc='upper left')
-		fig.tight_layout()
-		fig.savefig(out_dir / f"category_label_feedback_distortion_{label}.png", dpi=200)
+def plot_transfer_results(df: pd.DataFrame, out_dir: Path):
+    """
+    Plot transfer phase accuracy (Old, New Low/Med/High, Prototype).
+    """
+    if "phase" not in df.columns: return
+    df_trans = df[df["phase"] == "transfer"].copy()
+    if df_trans.empty: return
 
+    # Focus on Feedback condition
+    # Aggregation
+    agg = df_trans.groupby(["feedback", "learning_distortion", "stim_type"], as_index=False)["accuracy"].mean()
+    
+    # Custom sort order for X-axis (stim_type)
+    type_order = ["Prototype", "Old", "New_Low", "New_Medium", "New_High", "Unrelated"]
+    present_types = [t for t in type_order if t in agg["stim_type"].unique()]
+    
+    # Plot for Feedback condition
+    fb_data = agg[agg["feedback"] == "Feedback"]
+    if not fb_data.empty:
+        plt.figure(figsize=(10, 6))
+        sns.barplot(
+            data=fb_data, x="learning_distortion", y="accuracy", hue="stim_type",
+            hue_order=present_types, palette="rocket"
+        )
+        plt.title("Transfer Accuracy by Learning Condition (Feedback Group)", fontsize=14)
+        
+        # Change X-axis label to match Homa: "Learning Condition"
+        plt.xlabel("Learning Condition (Distortion Level)", fontsize=12)
+        plt.ylabel("Transfer Accuracy", fontsize=12)
+        plt.ylim(0, 1.05)
+        plt.legend(title="Transfer Item Type", bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.tight_layout()
+        plt.savefig(out_dir / "transfer_accuracy_feedback.png", dpi=200)
+        plt.close()
 
-def main(
-	continuous_csv=Path(__file__).resolve().parent.parent / "results" / "exp_category_label_feedback_continuous.csv",
-	out_dir=Path(__file__).resolve().parent,
-):
-	sns.set_theme(style="whitegrid")
-	if continuous_csv.exists():
-		df = pd.read_csv(continuous_csv)
-		
-		# Map distortion to levels
-		dist_map = {"Prototype": 0, "Low": 1, "High": 2}
-		df["dist_level"] = df["distortion"].map(dist_map)
-		
-		# Accuracy metric (prob of true category)
-		# For A targets: prob_A. For B targets: prob_B.
-		# My experiment script calculated 'accuracy' column but also prob_A/B.
-		# Let's use 'accuracy' column if binary or prob if confidence.
-		# Posner used "Endorsement Probability".
-		# Let's use "Probability of Correct Category".
-		df["prob_correct"] = df.apply(lambda r: r.prob_A if r.true_category=="A" else r.prob_B, axis=1)
-		
-		# Filter final epoch for the main graph
-		df_final = df[df["epoch"] == df["epoch"].max()]
-		
-		mean_vals = df_final.groupby(["label_rate", "dist_level", "distortion"], as_index=False)["prob_correct"].mean()
-		
-		fig, ax = plt.subplots(figsize=(7, 5))
-		
-		# Plot: Distortion (X) vs Accuracy (Y) hue=LabelRate
-		sns.lineplot(data=mean_vals, x="dist_level", y="prob_correct", hue="label_rate", 
-		             marker="o", palette="viridis", linewidth=2, ax=ax)
-		
-		ax.set_title("Category Label / Feedback Effect\nPosner & Keele (1968)", fontsize=12)
-		ax.set_ylabel("Endorsement Probability (Accuracy)", fontsize=11)
-		ax.set_xlabel("Distortion Level (0=Proto, 1=Low, 2=High)", fontsize=11)
-		ax.set_xticks([0, 1, 2])
-		ax.set_xticklabels(["Prototype", "Low Distortion", "High Distortion"])
-		ax.set_ylim(0, 1.05)
-		ax.legend(title="Label Rate (1.0=Feedback)")
-		
-		fig.tight_layout()
-		fig.savefig(out_dir / "category_label_feedback_curve_continuous.png", dpi=200)
-	else:
-		print("Continuous CSV not found.")
+def main():
+    csv_path = Path(__file__).resolve().parent / "exp_category_label_feedback_continuous.csv"
+    out_dir = Path(__file__).resolve().parent
+    
+    if not csv_path.exists():
+        print(f"CSV not found at {csv_path}")
+        return
+        
+    df = pd.read_csv(csv_path)
+    sns.set_theme(style="whitegrid")
+    
+    # Run plots
+    plot_learning_curves(df, out_dir)
+    plot_transfer_results(df, out_dir)
+    
+    print("Plots generated.")
 
 
 if __name__ == "__main__":

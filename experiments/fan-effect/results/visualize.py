@@ -1,117 +1,66 @@
 from pathlib import Path
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
 import numpy as np
 
+def visualize_fan_effect_results():
+    """
+    Visualizes the results of the Fan Effect experiment.
+    Generates a plot of Reaction Time vs Fan Size.
+    """
+    # Paths
+    root_dir = Path(__file__).resolve().parent
+    csv_path = root_dir / "exp_fan_effect_discrete.csv"
+    
+    if not csv_path.exists():
+        print(f"Error: Results file not found at {csv_path}")
+        return
 
-def plot_fan(df: pd.DataFrame, out_dir: Path, label: str):
-	"""
-	Plot fan effect results.
-	
-	Citation: Anderson, J. R. (1974). Retrieval of propositional information from 
-	          long-term memory. Cognitive Psychology, 6(4), 451-474.
-	
-	Expected: Retrieval probability decreases with fan size (interference).
-	"""
-	# Use 'prob' column for retrieval probability
-	if "prob" in df.columns:
-		value_col = "prob"
-	elif "mean_prob_true_fact" in df.columns:
-		value_col = "mean_prob_true_fact"
-	else:
-		raise ValueError("No suitable probability column found in fan-effect CSV")
-
-	# Learning curves by fan size
-	mean_fan = df.groupby(["fan_size", "block"], as_index=False)[value_col].mean()
-	fig, ax = plt.subplots(figsize=(8, 5))
-	sns.lineplot(
-		data=mean_fan, x="block", y=value_col, hue="fan_size", marker="o", 
-		ax=ax, palette="rocket", linewidth=2
-	)
-	ax.set_title("Fan Effect: Retrieval Probability vs Training\\nAnderson (1974)", fontsize=12)
-	ax.set_ylabel("Retrieval Probability (P(Correct Fact))", fontsize=11)
-	ax.set_xlabel("Training Block", fontsize=11)
-	ax.set_ylim(0, 1.05)
-	ax.legend(title='Fan Size', bbox_to_anchor=(1.05, 1), loc='upper left')
-	fig.tight_layout()
-	fig.savefig(out_dir / f"fan_effect_blocks_{label}.png", dpi=200)
-
-	# Final retrieval probability vs fan size
-	end_fan = mean_fan.groupby("fan_size", as_index=False).agg(prob_end=(value_col, "last"))
-	fig, ax = plt.subplots(figsize=(7, 4.5))
-	sns.scatterplot(data=end_fan, x="fan_size", y="prob_end", s=150, ax=ax, color='darkred')
-	
-	# Add regression line
-	if len(end_fan) > 1:
-		z = np.polyfit(end_fan["fan_size"], end_fan["prob_end"], 1)
-		p = np.poly1d(z)
-		ax.plot(end_fan["fan_size"], p(end_fan["fan_size"]), "--", color='gray', 
-		        linewidth=2, label=f'Linear fit (slope={z[0]:.3f})')
-	
-	ax.set_title("Fan Effect: Final Retrieval vs Fan Size\\nAnderson (1974)", fontsize=12)
-	ax.set_ylabel("Final Retrieval Probability", fontsize=11)
-	ax.set_xlabel("Fan Size (Number of Facts)", fontsize=11)
-	ax.set_ylim(0, 1.05)
-	
-	# Add value annotations
-	for i, row in end_fan.iterrows():
-		ax.text(row["fan_size"], row["prob_end"] + 0.03, f'{row["prob_end"]:.2f}', 
-		        ha='center', va='bottom', fontsize=9)
-	
-	ax.legend(loc='upper right')
-	ax.grid(True, alpha=0.3)
-	fig.tight_layout()
-	fig.savefig(out_dir / f"fan_effect_final_{label}.png", dpi=200)
-
-
-def main(
-	discrete_csv=Path(__file__).resolve().parent.parent / "results" / "exp_fan_effect_discrete.csv",
-	out_dir=Path(__file__).resolve().parent,
-):
-	sns.set_theme(style="whitegrid")
-	if discrete_csv.exists():
-		df = pd.read_csv(discrete_csv)
-		
-		# Anderson 1974: RT increases with Fan Size
-		# Cobweb: Probability decreases with Fan Size
-		# Transformation: RT ~ 1 / Probability (Surprisal)
-		
-		# Take final performance
-		df_final = df[df["epoch"] == df["epoch"].max()]
-		
-		# Calculate simulated RT
-		# Add small epsilon to avoid divide by zero if prob=0
-		df_final["simulated_rt"] = 1.0 / (df_final["prob"] + 0.001)
-		
-		mean_rt = df_final.groupby("fan_size", as_index=False)["simulated_rt"].mean()
-		
-		fig, ax = plt.subplots(figsize=(7, 5))
-		
-		# Line plot: Fan Size vs RT
-		sns.lineplot(data=mean_rt, x="fan_size", y="simulated_rt", marker="s", markersize=10, 
-		             color="black", linestyle="-", linewidth=2, ax=ax)
-		
-		# Regression line to show linearity
-		if len(mean_rt) > 1:
-			z = np.polyfit(mean_rt["fan_size"], mean_rt["simulated_rt"], 1)
-			p = np.poly1d(z)
-			ax.plot(mean_rt["fan_size"], p(mean_rt["fan_size"]), "--", color='red', alpha=0.6, 
-			        label=f"Linear Fit")
-			
-		ax.set_title("Fan Effect\nAnderson (1974)", fontsize=12)
-		ax.set_ylabel("Simulated Reaction Time (1/Prob)", fontsize=11)
-		ax.set_xlabel("Fan Size (Facts per Concept)", fontsize=11)
-		ax.set_xticks([1, 2, 4, 8])
-		ax.legend()
-		
-		fig.tight_layout()
-		fig.savefig(out_dir / "fan_effect_rt_curve_discrete.png", dpi=200)
-		
-	else:
-		print("CSV not found.")
-
+    # Load Data
+    df = pd.read_csv(csv_path)
+    
+    # Calculate Mean RT per Fan Size
+    # We aggregate over seeds and predicates
+    summary = df.groupby(["fan_size"], as_index=False)["simulated_rt"].mean()
+    
+    # Plotting
+    sns.set_theme(style="whitegrid")
+    fig, ax = plt.subplots(figsize=(8, 6))
+    
+    # Plot Data Points
+    sns.lineplot(
+        data=summary, x="fan_size", y="simulated_rt", 
+        marker="o", markersize=10, linewidth=2.5, color="#2c3e50", ax=ax, label="Simulated Data"
+    )
+    
+    # Add Regression Line to highlight trend
+    x = summary["fan_size"]
+    y = summary["simulated_rt"]
+    z = np.polyfit(x, y, 1) # Linear fit
+    p = np.poly1d(z)
+    
+    ax.plot(x, p(x), "--", color="#e74c3c", linewidth=2, label=f"Linear Trend (Slope={z[0]:.2f})")
+    
+    # Formatting
+    ax.set_title("Fan Effect Simulation (Anderson, 1991)\nRetrieval Inteference in Cobweb", fontsize=14, pad=15)
+    ax.set_xlabel("Fan Size (Facts associated with Concept)", fontsize=12)
+    ax.set_ylabel("Simulated Reaction Time (1 / Probability)", fontsize=12)
+    ax.set_xticks(summary["fan_size"].unique())
+    ax.legend(fontsize=11)
+    
+    # Add Annotations
+    for i, row in summary.iterrows():
+        ax.annotate(f"{row['simulated_rt']:.2f}", 
+                    (row["fan_size"], row["simulated_rt"]),
+                    textcoords="offset points", xytext=(0,10), ha='center', fontsize=10)
+        
+    plt.tight_layout()
+    
+    # Save
+    out_file = root_dir / "fan_effect_results_plot.png"
+    plt.savefig(out_file, dpi=300)
+    print(f"Plot saved to {out_file}")
 
 if __name__ == "__main__":
-	main()
+    visualize_fan_effect_results()
