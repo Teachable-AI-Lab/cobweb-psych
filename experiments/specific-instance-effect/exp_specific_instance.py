@@ -151,7 +151,7 @@ def execute_hayes_roth_simulation(number_of_seeds=20):
                 training_sequence.append(item)
                 
         # 2. Learning Phase
-        tree = CobwebDiscreteTree(alpha=0.25, weight_attr=True)
+        tree = CobwebDiscreteTree(alpha=0.25)
         
         # Train for multiple epochs to simulate learning to criterion
         epochs = 3 
