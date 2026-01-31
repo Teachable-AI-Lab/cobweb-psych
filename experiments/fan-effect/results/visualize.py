@@ -31,22 +31,25 @@ def visualize_fan_effect_results():
     sns.set_context("talk")
     fig, ax = plt.subplots(figsize=(10, 7))
     
-    # Define colors
-    palette = {"Memory": "#2c3e50", "Category": "#e74c3c"}
+    # Define style for BW plot:
+    # Memory: Black line, Black filled circles
+    # Category: Black line (dashed?), White filled circles
     
-    # Plot Lines
-    sns.lineplot(
-        data=summary, x="fan_size", y="mean", hue="condition", 
-        marker="o", markersize=12, linewidth=3, palette=palette, ax=ax
+    # Memory Condition
+    data_mem = summary[summary["condition"] == "Memory"]
+    ax.errorbar(
+        x=data_mem["fan_size"], y=data_mem["mean"], yerr=data_mem["sem"],
+        fmt='-o', color='black', mfc='black', mec='black', markersize=10, 
+        linewidth=2, capsize=5, label="Memory (Exact)"
     )
     
-    # Add Error Bars
-    for cond in summary["condition"].unique():
-        data = summary[summary["condition"] == cond]
-        ax.errorbar(
-            x=data["fan_size"], y=data["mean"], yerr=data["sem"], 
-            fmt='none', ecolor=palette[cond], capsize=5, elinewidth=2
-        )
+    # Category Condition
+    data_cat = summary[summary["condition"] == "Category"]
+    ax.errorbar(
+        x=data_cat["fan_size"], y=data_cat["mean"], yerr=data_cat["sem"],
+        fmt='--o', color='black', mfc='white', mec='black', markersize=10, 
+        linewidth=2, capsize=5, label="Category (Plausibility)"
+    )
     
     # Formatting
     ax.set_title("Cobweb Simulation of Fan Effect (Reder & Ross, 1983)", fontsize=16, pad=20)
@@ -57,9 +60,11 @@ def visualize_fan_effect_results():
     
     # Add Annotations
     for i, row in summary.iterrows():
+        # Offset slightly for clarity
+        offset = 12 if row["condition"] == "Memory" else -12
         ax.annotate(f"{row['mean']:.2f}", 
                     (row["fan_size"], row["mean"]),
-                    textcoords="offset points", xytext=(0,10), ha='center', fontsize=10)
+                    textcoords="offset points", xytext=(0, offset), ha='center', fontsize=10)
         
     plt.tight_layout()
     
