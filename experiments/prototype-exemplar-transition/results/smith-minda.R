@@ -15,7 +15,7 @@
   exp_smith_minda$type <- "Standard Items"
   exp_smith_minda[exp_smith_minda$stimulus %in% c(7, 14),]$type = "Exceptions"
   # exp_smith_minda$type <- ifelse(exp_smith_minda$stimulus %in% c(7, 14), "Exceptions", "Typical")
-  # exp_smith_minda[exp_smith_minda$stimulus %in% c(1, 8),]$type = "Prototypes"
+  exp_smith_minda[exp_smith_minda$stimulus %in% c(1, 8),]$type = "Prototypes"
   exp_smith_minda$type <- as.factor(exp_smith_minda$type)
   summary(exp_smith_minda)
   
@@ -33,8 +33,8 @@
     stat_summary(fun = mean, geom = "point", size=3) +
     scale_shape_manual(values = c(
       "Standard Items"  = 21,  # circle (fillable)
-      "Exceptions" = 24   # triangle (fillable)
-      #"Prototypes" = 13   # triangle (fillable)
+      "Exceptions" = 24,   # triangle (fillable)
+      "Prototypes" = 13   # triangle (fillable)
     )) +
     scale_fill_manual(values = c(
       "A" = "white",   # unfilled
@@ -43,7 +43,9 @@
     labs(
       x = "Segment",
       y = "Probability of Category A",
-      title = "Cobweb Model"
+      # title = "Cobweb Model",
+      fill = "Category",
+      shape = "Type"
     ) +
     theme_classic(base_size = 15) +
     guides(
@@ -57,6 +59,12 @@
     scale_y_continuous(
       limits = c(0, 1),
       breaks = seq(0, 1, by = 0.2)
+    ) +
+    theme(
+      legend.position = "none",
+      #legend.position = c(0.7, 0.5),
+      #legend.justification = c("left", "center"),
+      #legend.background = element_rect(fill = "white", color = "black")
     )
   
   # ggsave("/Users/cmaclellan3/Projects/cobweb-psych/experiments/smith-minda-1998/cobweb-exemplar-prototype.png")
