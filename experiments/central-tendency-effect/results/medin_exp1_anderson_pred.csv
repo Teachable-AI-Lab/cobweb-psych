@@ -1,0 +1,13 @@
+Item,Category,Type,Rating,Prediction
+6,A,Old,4.8,0.55
+9,A,Old,4.8,0.525
+7,A,Old,4.6,0.525
+13,A,New,4.4,0.525
+5,A,New,4.3,0.525
+14,B,New,3.2,0.49
+4,A,New,3.6,0.525
+3,B,New,3.5,0.48
+8,B,New,4.0,0.48
+15,B,Old,4.5,0.49
+16,B,Old,4.9,0.46
+10,B,Old,5.2,0.44
