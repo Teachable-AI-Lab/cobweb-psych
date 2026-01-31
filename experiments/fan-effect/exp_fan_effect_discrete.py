@@ -84,7 +84,7 @@ def run_experiment_reder_ross(n_seeds=20):
         np.random.seed(s)
         
         # Instantiate Tree
-        tree = CobwebDiscreteTree(alpha=0.7)
+        tree = CobwebDiscreteTree(alpha=0.001)
         
         # Training
         # Shuffle presentation order
@@ -117,19 +117,15 @@ def run_experiment_reder_ross(n_seeds=20):
                     cond_label = "Unrelated Foil"
             
             # --- MEMORY TASK (Recognition) ---
-            # "Did [Person] [Predicate]?"
-            # Query: Person (1) + Predicate (3). Predict: Anything?
-            # Actually standard Fan Effect probe is just measuring probability/RT of the Whole Fact (1, 2, 3) 
-            # OR typically Person+Predicate. Theme is context.
-            # Table 2 provides Theme explicitly in the probe vector.
-            # We will use Person(1) + Predicate(3) + Theme(2) as the cue?
-            # Usually: Probe = "Marty matches X".
-            # We calculate P(Predicate | Person, Theme).
-            
-            # Query: {Person, Theme}. Target: Predicate.
-            # (Matches `RT ~ 1/P(Action|Person)` roughly)
+            # Task: "Judge whether specific sentences had been studied."
+            # Foils: Related Foils (Same Theme, Different Predicate).
+            # Expected Result: Standard Fan Effect (RT increases with Fan size).
+            # Logic: We cue with Person & Theme to predict the specific Predicate.
+            # As Fan increases, the probability mass for P(Predicate | Person, Theme) 
+            # is split among more learned predicates, lowering the probability for the specific target
+            # and increasing RT (1/P).
             query_mem = {1: {p: 1.0}, 2: {t: 1.0}}
-            out_mem = tree.predict(query_mem, 8, False)
+            out_mem = tree.predict(query_mem, 30, False)
             
             p_mem = 0.0001
             if 3 in out_mem and pr in out_mem[3]:
@@ -138,15 +134,16 @@ def run_experiment_reder_ross(n_seeds=20):
             rt_mem = 1.0 / p_mem if p_mem > 0 else 100.0
             
             # --- CATEGORY TASK (Plausibility) ---
-            # "Is [Predicate] likely for [Person]?"
-            # Usually implies checking if Theme is consistent.
-            # Query: {Person}. Target: Theme.
-            # "Is this person a Theme-X type?"
-            # If Predicate is compatible with Theme X, and Person is Theme X...
-            # We measure P(Theme | Person).
-            
+            # Task: "Judge whether the sentence is like the sentences they had studied."
+            # Foils: Unrelated Foils (Different Theme). Targets & Related Foils are "Plausible".
+            # Expected Result: Reverse Fan Effect (RT decreases with Fan size for Targets).
+            # Logic: We cue with Person to predict the Theme (checking consistency).
+            # "Is this Person a [Theme] type?"
+            # As Fan increases (more instances of Person X with Theme Y), the Person->Theme 
+            # association is strengthened (higher counts relative to smoothing), 
+            # increasing P(Theme | Person) and decreasing RT.
             query_cat = {1: {p: 1.0}}
-            out_cat = tree.predict(query_cat, 8, False)
+            out_cat = tree.predict(query_cat, 30, False)
             
             p_cat = 0.0001
             if 2 in out_cat and t in out_cat[2]:

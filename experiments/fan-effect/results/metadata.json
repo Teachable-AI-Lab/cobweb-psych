@@ -1,9 +1,0 @@
-{
-  "description": "Fan Effect Simulation (Anderson 1974 / Reder & Ross 1983)",
-  "prediction": "RT (1/Prob) should increase with Fan Size",
-  "fan_sizes_tested": [
-    1,
-    3,
-    5
-  ]
-}
