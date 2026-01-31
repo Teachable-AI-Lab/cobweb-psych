@@ -20,47 +20,47 @@ CRITERION_RUNS = 1     # Exp 2
 # Stimulus Definitions from Medin & Schaffer (1978) - Experiment 2
 STIMULI_EXP2 = {
     # Train A (5 items)
-    "Stim4":  {"vec": [1, 1, 1, 0], "cat": "A", "type": "Train"},
-    "Stim7":  {"vec": [1, 0, 1, 0], "cat": "A", "type": "Train"},
-    "Stim15": {"vec": [1, 0, 1, 1], "cat": "A", "type": "Train"},
-    "Stim13": {"vec": [1, 1, 0, 1], "cat": "A", "type": "Train"},
-    "Stim5":  {"vec": [0, 1, 1, 1], "cat": "A", "type": "Train"},
+    "4":  {"vec": [1, 1, 1, 0], "cat": "A", "type": "Train"},
+    "7":  {"vec": [1, 0, 1, 0], "cat": "A", "type": "Train"},
+    "15": {"vec": [1, 0, 1, 1], "cat": "A", "type": "Train"},
+    "13": {"vec": [1, 1, 0, 1], "cat": "A", "type": "Train"},
+    "5":  {"vec": [0, 1, 1, 1], "cat": "A", "type": "Train"},
     
     # Train B (4 items)
-    "Stim12": {"vec": [1, 1, 0, 0], "cat": "B", "type": "Train"},
-    "Stim2":  {"vec": [0, 1, 1, 0], "cat": "B", "type": "Train"}, 
-    "Stim14": {"vec": [0, 0, 0, 1], "cat": "B", "type": "Train"},
-    "Stim10": {"vec": [0, 0, 0, 0], "cat": "B", "type": "Train"},
+    "12": {"vec": [1, 1, 0, 0], "cat": "B", "type": "Train"},
+    "2":  {"vec": [0, 1, 1, 0], "cat": "B", "type": "Train"}, 
+    "14": {"vec": [0, 0, 0, 1], "cat": "B", "type": "Train"},
+    "10": {"vec": [0, 0, 0, 0], "cat": "B", "type": "Train"},
 
     # New Transfer (7 items)
-    "Stim1":  {"vec": [1, 0, 0, 1], "cat": "A", "type": "New"}, 
-    "Stim3":  {"vec": [1, 0, 0, 0], "cat": "B", "type": "New"}, 
-    "Stim6":  {"vec": [1, 1, 1, 1], "cat": "A", "type": "New"}, 
-    "Stim8":  {"vec": [0, 0, 1, 0], "cat": "B", "type": "New"}, 
-    "Stim9":  {"vec": [0, 1, 0, 1], "cat": "A", "type": "New"}, 
-    "Stim11": {"vec": [0, 0, 1, 1], "cat": "A", "type": "New"}, 
-    "Stim16": {"vec": [0, 1, 0, 0], "cat": "B", "type": "New"},
+    "1":  {"vec": [1, 0, 0, 1], "cat": "A", "type": "New"}, 
+    "3":  {"vec": [1, 0, 0, 0], "cat": "B", "type": "New"}, 
+    "6":  {"vec": [1, 1, 1, 1], "cat": "A", "type": "New"}, 
+    "8":  {"vec": [0, 0, 1, 0], "cat": "B", "type": "New"}, 
+    "9":  {"vec": [0, 1, 0, 1], "cat": "A", "type": "New"}, 
+    "11": {"vec": [0, 0, 1, 1], "cat": "A", "type": "New"}, 
+    "16": {"vec": [0, 1, 0, 0], "cat": "B", "type": "New"},
 }
 
 # Stimulus Definitions from Medin & Schaffer (1978) - Experiment 1
 STIMULI_EXP1 = {
     # Train A
-    "Stim6": {"vec": [1, 1, 1, 1], "cat": "A", "type": "Train"}, # E=1, S=1, C=1, P=1
-    "Stim7": {"vec": [1, 0, 1, 0], "cat": "A", "type": "Train"}, # E=1, S=0, C=1, P=0
-    "Stim9": {"vec": [0, 1, 0, 1], "cat": "A", "type": "Train"}, # E=0, S=1, C=0, P=1
+    "6": {"vec": [1, 1, 1, 1], "cat": "A", "type": "Train"}, # E=1, S=1, C=1, P=1
+    "7": {"vec": [1, 0, 1, 0], "cat": "A", "type": "Train"}, # E=1, S=0, C=1, P=0
+    "9": {"vec": [0, 1, 0, 1], "cat": "A", "type": "Train"}, # E=0, S=1, C=0, P=1
 
     # Train B
-    "Stim10": {"vec": [0, 0, 0, 0], "cat": "B", "type": "Train"}, # E=0, S=0, C=0, P=0
-    "Stim15": {"vec": [1, 0, 1, 1], "cat": "B", "type": "Train"}, # E=1, S=0, C=1, P=1
-    "Stim16": {"vec": [0, 1, 0, 0], "cat": "B", "type": "Train"}, # E=0, S=1, C=0, P=0
+    "10": {"vec": [0, 0, 0, 0], "cat": "B", "type": "Train"}, # E=0, S=0, C=0, P=0
+    "15": {"vec": [1, 0, 1, 1], "cat": "B", "type": "Train"}, # E=1, S=0, C=1, P=1
+    "16": {"vec": [0, 1, 0, 0], "cat": "B", "type": "Train"}, # E=0, S=1, C=0, P=0
 
     # Test
-    "Stim5":  {"vec": [0, 1, 1, 1], "cat": "A", "type": "New"}, # E=0, S=1, C=1, P=1
-    "Stim13": {"vec": [1, 1, 0, 1], "cat": "A", "type": "New"}, # E=1, S=1, C=0, P=1
-    "Stim4":  {"vec": [1, 1, 1, 0], "cat": "A", "type": "New"}, # E=1, S=1, C=1, P=0
-    "Stim3":  {"vec": [1, 0, 0, 0], "cat": "B", "type": "New"}, # E=1, S=0, C=0, P=0
-    "Stim8":  {"vec": [0, 0, 1, 0], "cat": "B", "type": "New"}, # E=0, S=0, C=1, P=0
-    "Stim14": {"vec": [0, 0, 0, 1], "cat": "B", "type": "New"}, # E=0, S=0, C=0, P=1
+    "5":  {"vec": [0, 1, 1, 1], "cat": "A", "type": "New"}, # E=0, S=1, C=1, P=1
+    "13": {"vec": [1, 1, 0, 1], "cat": "A", "type": "New"}, # E=1, S=1, C=0, P=1
+    "4":  {"vec": [1, 1, 1, 0], "cat": "A", "type": "New"}, # E=1, S=1, C=1, P=0
+    "3":  {"vec": [1, 0, 0, 0], "cat": "B", "type": "New"}, # E=1, S=0, C=0, P=0
+    "8":  {"vec": [0, 0, 1, 0], "cat": "B", "type": "New"}, # E=0, S=0, C=1, P=0
+    "14": {"vec": [0, 0, 0, 1], "cat": "B", "type": "New"}, # E=0, S=0, C=0, P=1
 }
 
 def generate_stimuli_mapping(subject_seed, stimuli_defs):
@@ -85,7 +85,7 @@ def generate_stimuli_mapping(subject_seed, stimuli_defs):
         })
     return mapped_stimuli
 
-def run_single_experiment_sim(exp_name, stimuli_defs, n_runs=16, criterion=1):
+def run_single_experiment_sim(exp_name, stimuli_defs, max_runs=16, criterion=1, consecutive=1):
     print(f"Starting {exp_name}...")
     results = []
     errors_log = []
@@ -99,13 +99,13 @@ def run_single_experiment_sim(exp_name, stimuli_defs, n_runs=16, criterion=1):
         train_items = [s for s in stimuli if s["type"] == "Train"]
         transfer_items = list(stimuli) # All items
         
-        tree = CobwebDiscreteTree(alpha=1)
+        tree = CobwebDiscreteTree(alpha=0.1)
         cat_to_int = {"A": 1, "B": 2}
         subj_errors = {item["name"]: 0 for item in train_items}
 
         # TRAINING
         consecutive_perfect = 0
-        for run in range(1, n_runs + 1):
+        for run in range(1, max_runs + 1):
             shuffle(train_items)
             errors = 0
             for item in train_items:
@@ -137,7 +137,7 @@ def run_single_experiment_sim(exp_name, stimuli_defs, n_runs=16, criterion=1):
             else:
                 consecutive_perfect = 0
                 
-            if consecutive_perfect >= CRITERION_RUNS: # Using global const
+            if consecutive_perfect >= consecutive:
                 break
         
         for s_name, count in subj_errors.items():
@@ -145,6 +145,7 @@ def run_single_experiment_sim(exp_name, stimuli_defs, n_runs=16, criterion=1):
                 "experiment": exp_name,
                 "subject": s_idx,
                 "stimulus_id": s_name,
+                "num_runs": run,
                 "error_count": count,
                 "cat": stimuli_defs[s_name]["cat"]
             })
@@ -166,40 +167,34 @@ def run_single_experiment_sim(exp_name, stimuli_defs, n_runs=16, criterion=1):
                 prob_A = 0.5
                 prob_B = 0.5
                 
-            total = prob_A + prob_B
-            if total > 0:
-                p_A_norm = prob_A / total
-            else:
-                p_A_norm = 0.5
-            
             choice = "A" if prob_A > prob_B else "B"
             is_correct = 1 if choice == item["cat"] else 0
             
-            p_correct = p_A_norm if item["cat"] == "A" else (1.0 - p_A_norm)
+            p_correct = prob_A if item["cat"] == "A" else (1.0 - prob_A)
             row_type = "Old" if item["type"] == "Train" else "New"
             
             results.append({
-                "experiment": exp_name,
-                "subject": s_idx,
-                "stimulus_id": item["name"],
-                "type": row_type,
-                "correct_cat": item["cat"],
+                "Experiment": exp_name,
+                "Subject": s_idx,
+                "Item": item["name"],
+                "Category": item["cat"],
+                "Type": row_type,
                 "p_correct": p_correct,
-                "choice": choice,
-                "accuracy": is_correct,
-                "p_A": p_A_norm
+                "Choice": choice,
+                "Accuracy": is_correct,
+                "Prediction": prob_A
             })
     return results, errors_log
 
 def run_experiment():
     print("Running Medin & Schaffer (1978) Replication...")
-    
-    # Exp 2
-    res2, err2 = run_single_experiment_sim("Exp2", STIMULI_EXP2, MAX_TRAINING_RUNS, 1)
-    
+
     # Exp 1 (Assuming similar protocol: learn to criterion)
     # Medin 1978 Exp 1 also used learning to criterion.
-    res1, err1 = run_single_experiment_sim("Exp1", STIMULI_EXP1, MAX_TRAINING_RUNS, 1)
+    res1, err1 = run_single_experiment_sim("Exp1", STIMULI_EXP1, max_runs=20, criterion=0, consecutive=2)
+    
+    # Exp 2
+    res2, err2 = run_single_experiment_sim("Exp2", STIMULI_EXP2, max_runs=16, criterion=0, consecutive=1)
     
     output_dir = os.path.join(os.path.dirname(__file__), "results")
     os.makedirs(output_dir, exist_ok=True)
