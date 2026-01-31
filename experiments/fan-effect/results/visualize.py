@@ -20,9 +20,11 @@ def visualize_fan_effect_results():
     # Load Data
     df = pd.read_csv(csv_path)
     
-    # Calculate Mean RT per Fan Size per Condition
-    # The new script outputs 'rt' instead of 'simulated_rt' and includes a 'condition' column
-    summary = df.groupby(["condition", "fan_size"], as_index=False)["rt"].agg(["mean", "sem"]).reset_index()
+    # Convert RT back to Probability then to Error (1 - P)
+    df['error'] = 1.0 - (1.0 / df['rt'])
+    
+    # Calculate Mean Error per Fan Size per Condition
+    summary = df.groupby(["condition", "fan_size"], as_index=False)["error"].agg(["mean", "sem"]).reset_index()
     
     # Plotting
     sns.set_theme(style="whitegrid")
@@ -49,7 +51,7 @@ def visualize_fan_effect_results():
     # Formatting
     ax.set_title("Cobweb Simulation of Fan Effect (Reder & Ross, 1983)", fontsize=16, pad=20)
     ax.set_xlabel("Fan Size (Facts associated with Concept)", fontsize=14)
-    ax.set_ylabel("Simulated Reaction Time (1 / Probability)", fontsize=14)
+    ax.set_ylabel("Probability of Error (1 - Accuracy)", fontsize=14)
     ax.set_xticks([1, 2, 3])
     ax.legend(title="Judgment Task", fontsize=12)
     
