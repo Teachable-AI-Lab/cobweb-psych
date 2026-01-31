@@ -99,9 +99,10 @@ def visualize_results():
     # Flatten columns
     agg.columns = ['_'.join(col).strip() if col[1] else col[0] for col in agg.columns.values]
     
-    # Sort for plotting: Group by Type (Old/New) then ID
-    agg['sort_order'] = agg['type'].map({'Old': 0, 'New': 1})
-    agg = agg.sort_values(by=['sort_order', 'stimulus_id'])
+    # Sort for plotting: Group by Type (Old/New) then Human Rating
+    agg['human_rating_sort'] = agg['stimulus_id'].map(HUMAN_RATINGS)
+    agg['type_order'] = agg['type'].map({'Old': 1, 'New': 0})
+    agg = agg.sort_values(by=['type_order', 'human_rating_sort'], ascending=False)
     
     # Create Label with Type and Category
     agg['label'] = agg.apply(lambda x: f"{x['stimulus_id']}\n({x['type']}, {x['correct_cat']})", axis=1)
