@@ -1,233 +1,289 @@
 from cobweb.cobweb_discrete import CobwebDiscreteTree
-from random import seed, shuffle, randint
+from random import seed, shuffle, random, choice
 import numpy as np
 import pandas as pd
 from pathlib import Path
 import json
 
-# Specific-Instance / Exemplar-Strength Effect
-# Replicating Hayes-Roth & Hayes-Roth (1977) Design
+# Hayes-Roth & Hayes-Roth (1977) - Specific Instance Effect
+# 
+# Replicates the "Concept learning and the recognition and classification of exemplars"
+# study using the specific stimuli list from Table 1.
 #
-# Reference: Hayes-Roth, B., & Hayes-Roth, F. (1977). Concept learning and the 
-#            recognition and classification of exemplars. 
-#            Journal of Verbal Learning and Verbal Behavior.
+# Procedure:
+# 1. Training: 132 trials.
+#    - Exemplars: Defining features (Age, Edu, Marital) + Extraneous (Name, Hobby).
+#    - Classes: Club 1, Club 2, Neither. (Some are 'Either' -> Feedback 50/50).
+#    - "Neither" items derived from Table 1 (dist 0 or 1 from Club 444?).
+#      Wait, Table 1 lists 444 as 'Neither' prototype (dist 0).
+#      Table 1 shows clubs 1, 2, Either, Neither.
+# 
+# 2. Recognition Test:
+#    - Probe: "ANYONE" + 3 Defining Features. (No Name/Hobby).
+#    - Task: Old/New + Confidence (1-5).
 #
-# Stimuli Structure:
-# - 3 Relevant Dimensions (Age, Education, Marital Status)
-# - 2 Irrelevant/Distractor Dimensions (Surname, Hobby)
-# - Values: 1-4 (Discrete)
-# - Categories: Club 1 (Proto 111), Club 2 (Proto 222)
+# 3. Final Classification:
+#    - Probe: "ANYONE" + 3 Defining Features.
+#    - Task: Club 1 or Club 2 + Confidence.
 
-def generate_hayes_roth_stimuli(rng_seed):
+def generate_stimuli_table_1():
     """
-    Generates the specific stimulus set with Hayes-Roth properties.
-    Includes 3 relevant features and 2 irrelevant distractors.
-    
-    Prototypes:
-    - Class 1: 1 1 1 (never shown or rare)
-    - Class 2: 2 2 2 (never shown or rare)
-    
-    Manipulation:
-    - Orthogonal manipulation of Distance-to-Prototype vs Frequency.
+    Returns the definition of stimuli from Table 1.
+    Format: Code (e.g. '112'), True Class, Frequency.
     """
+    # Definitions from Table 1 (Image provided)
+    # Col 1: Exemplar Code
+    # Col 2: Club (1, 2, Either, Neither)
+    # Col 3: Freq (0, 1, 10)
+    # Col 4: Tested (Yes/No) - effectively all unique codes in Table 1 are listed
     
-    # Local RNG for stability of irrelevant features per seed
-    local_rng = np.random.RandomState(rng_seed)
-    
-    def get_distractors():
-        # Generates 2 random values for the irrelevant dimensions (1-4)
-        return [local_rng.randint(1, 5), local_rng.randint(1, 5)]
+    # We define the raw rows
+    dataset = [
+        # Club 1 (Freq 10)
+        ('112', '1', 10), ('121', '1', 10), ('211', '1', 10),
+        # Club 1 (Freq 1)
+        ('113', '1', 1), ('131', '1', 1), ('311', '1', 1), 
+        ('133', '1', 1), ('313', '1', 1), ('331', '1', 1),
+        
+        # Club 2 (Freq 10)
+        ('221', '2', 10), ('212', '2', 10), ('122', '2', 10),
+        # Club 2 (Freq 1)
+        ('223', '2', 1), ('232', '2', 1), ('322', '2', 1),
+        ('233', '2', 1), ('323', '2', 1), ('332', '2', 1),
+        
+        # Either (Freq 10)
+        ('132', 'Either', 10), ('321', 'Either', 10), ('213', 'Either', 10),
+        # Either (Freq 0 - Never seen!) -> Test items usually
+        ('231', 'Either', 0), ('123', 'Either', 0), ('312', 'Either', 0),
+        
+        # Prototype 1 (Freq 0)
+        ('111', '1', 0),
+        # Prototype 2 (Freq 0)
+        ('222', '2', 0),
+        # Prototype 333 (333) labeled 'Either' Freq=0
+        ('333', 'Either', 0),
+        
+        # Neither (Prototype 444?)
+        ('444', 'Neither', 0), # Freq 0
+        
+        # Neither (Freq 1)
+        ('411', 'Neither', 1), ('422', 'Neither', 1), ('141', 'Neither', 1),
+        ('242', 'Neither', 1), ('114', 'Neither', 1), ('224', 'Neither', 1),
+        ('441', 'Neither', 1), ('442', 'Neither', 1), ('144', 'Neither', 1),
+        ('244', 'Neither', 1), ('414', 'Neither', 1), ('424', 'Neither', 1),
+        ('134', 'Neither', 1), ('234', 'Neither', 1), ('413', 'Neither', 1),
+        ('423', 'Neither', 1), ('341', 'Neither', 1), ('342', 'Neither', 1),
+        ('124', 'Neither', 1), ('214', 'Neither', 1), ('412', 'Neither', 1),
+        ('421', 'Neither', 1), ('241', 'Neither', 1), ('142', 'Neither', 1),
+        ('143', 'Neither', 1), ('243', 'Neither', 1), ('314', 'Neither', 1),
+        ('324', 'Neither', 1), ('431', 'Neither', 1), ('432', 'Neither', 1)
+    ]
+    return dataset
 
-    # We define the specific logical forms from the study
-    # Structure: [Rel1, Rel2, Rel3]
-    
-    exemplars = []
-    
-    # --- Category 1 (Club 1) ---
-    # Center: 1 1 1
-    
-    # 1. The Prototype (Distance 0) - Never Shown
-    exemplars.append({
-        "relevant": [1, 1, 1], "class": 1, "id": "A_Proto", "freq": 0, "type": "prototype",
-        "irrelevant": get_distractors()
-    })
-    
-    # 2. Frequent Exemplar (Distance 1) - Shown Often (e.g. 10 times)
-    # Transformation: 112
-    exemplars.append({
-        "relevant": [1, 1, 2], "class": 1, "id": "A_Freq_Dist1", "freq": 10, "type": "frequent",
-        "irrelevant": get_distractors()
-    })
-    
-    # 3. Rare Exemplar (Distance 1) - Shown Once
-    # Transformation: 121 (Equidistant to 111 as 112 is)
-    exemplars.append({
-        "relevant": [1, 2, 1], "class": 1, "id": "A_Rare_Dist1", "freq": 1, "type": "rare",
-        "irrelevant": get_distractors()
-    })
-    
-    # 4. Context Fillers (Distance 1 or 2)
-    # 211
-    exemplars.append({
-        "relevant": [2, 1, 1], "class": 1, "id": "A_Fill1", "freq": 2, "type": "filler",
-        "irrelevant": get_distractors()
-    })
-    # 131 (Dist 2)
-    exemplars.append({
-        "relevant": [1, 3, 1], "class": 1, "id": "A_Fill2", "freq": 1, "type": "filler",
-        "irrelevant": get_distractors()
-    })
-    
-    # --- Category 2 (Club 2) ---
-    # Center: 2 2 2
-    
-    # Prototype B (Distance 0) - Never Shown
-    exemplars.append({
-        "relevant": [2, 2, 2], "class": 2, "id": "B_Proto", "freq": 0, "type": "prototype",
-        "irrelevant": get_distractors()
-    })
-    
-    # Distinctive B Exemplars
-    # 221 (Dist 1)
-    exemplars.append({
-        "relevant": [2, 2, 1], "class": 2, "id": "B_1", "freq": 5, "type": "filler",
-        "irrelevant": get_distractors()
-    })
-    # 212 (Dist 1)
-    exemplars.append({
-        "relevant": [2, 1, 2], "class": 2, "id": "B_2", "freq": 5, "type": "filler",
-        "irrelevant": get_distractors()
-    })
-    # 322 (Dist 1)
-    exemplars.append({
-        "relevant": [3, 2, 2], "class": 2, "id": "B_3", "freq": 5, "type": "filler",
-        "irrelevant": get_distractors()
-    })
-    
-    return exemplars
+def decode_features(code):
+    """
+    '112' -> [1, 1, 2]
+    """
+    return [int(c) for c in code]
 
-def encode_full_item(item, include_class=True):
+def get_extraneous_features(rng):
     """
-    Encodes item including relevant and irrelevant features.
-    Map:
-    1: Rel1
-    2: Rel2
-    3: Rel3
-    4: Irr1
-    5: Irr2
-    6: Class
+    Generates random Name (1-100) and Hobby (1-100) to act as context.
+    "In the context of different extraneous features (name and hobby) on each trial."
     """
+    return [rng.randint(1, 100), rng.randint(1, 100)]
+
+def create_value_mapping():
+    # 3 Defining Dimensions (Values 1-4)
+    # Extraneous Name/Hobby (Values 1-100 treated as nominals)
+    # Class (1, 2, Neither)
+    
+    val_map = {}
+    
+    # Defining Dims 1-3
+    for i in range(1, 4):
+        val_map[f"dim_{i}"] = {v: v for v in range(1, 5)} # 1,2,3,4
+        
+    # Extraneous Dims 4-5
+    val_map["name"] = {v: v for v in range(1, 101)}
+    val_map["hobby"] = {v: v for v in range(1, 101)}
+    
+    # Class
+    val_map["class"] = {"1": 1, "2": 2, "Neither": 3}
+    
+    return val_map
+
+def encode_training_instance(features, extraneous, label, val_map):
     encoded = {}
     
-    # Relevant Features
-    for i, val in enumerate(item["relevant"]):
-        encoded[i+1] = {val: 1.0}
+    # Defining
+    for i, val in enumerate(features):
+        attr_id = i + 1
+        encoded[attr_id] = {val: 1.0}
         
-    # Irrelevant Features
-    for i, val in enumerate(item["irrelevant"]):
-        encoded[i+4] = {val: 1.0}
-        
-    # Class
-    if include_class:
-        encoded[6] = {item["class"]: 1.0}
-        
+    # Extraneous (Attr 4, 5)
+    encoded[4] = {extraneous[0]: 1.0}
+    encoded[5] = {extraneous[1]: 1.0}
+    
+    # Class (Attr 6)
+    c_id = val_map["class"][label]
+    encoded[6] = {c_id: 1.0}
+    
     return encoded
 
-def execute_hayes_roth_simulation(number_of_seeds=20):
+def encode_test_probe(features):
+    """
+    "ANYONE" + 3 features. No extraneous. No class.
+    """
+    encoded = {}
+    for i, val in enumerate(features):
+        attr_id = i + 1
+        encoded[attr_id] = {val: 1.0}
+    return encoded
+
+def run_hayes_roth_simulation(n_subjects=20):
+    dataset_def = generate_stimuli_table_1()
+    val_map = create_value_mapping()
+    
     results = []
     
-    for s in range(number_of_seeds):
+    for s in range(n_subjects):
         seed(s)
         np.random.seed(s)
+        rng = np.random.RandomState(s)
         
-        # Generated Stimuli for this subject/seed
-        stimuli = generate_hayes_roth_stimuli(s)
+        # 1. Construct Training List (132 exemplars)
+        training_list = []
         
-        # 1. Build Training List
-        training_sequence = []
-        for item in stimuli:
-            count = item["freq"]
-            for _ in range(count):
-                training_sequence.append(item)
+        for code, club, freq in dataset_def:
+            if freq == 0: continue
+            
+            feat = decode_features(code)
+            
+            for _ in range(freq):
+                # Unique extraneous context per trial
+                extra = get_extraneous_features(rng)
                 
-        # 2. Learning Phase
-        tree = CobwebDiscreteTree(alpha=0.25)
-        
-        # Train for multiple epochs to simulate learning to criterion
-        epochs = 3 
-        for e in range(epochs):
-            shuffle(training_sequence)
-            for item in training_sequence:
-                encoded = encode_full_item(item, include_class=True)
-                tree.fit([encoded])
+                # Assign Feedback Label
+                # If 'Either', "followed by Club 1 and Club 2 feedback cards equally often"
+                # We simulate this by assigning a hard label for this specific trial
+                # so the model learns '1' or '2' for this instance.
+                # However, the human just learned "Either response was counted as correct".
+                # The feedback card "indicated the correct club".
+                # For 'Either', we randomly pick 1 or 2 as the 'Correct' feedback.
                 
-        # 3. Test Phase
-        # We test on Specific Items (Old and New)
-        # Specifically comparing A_Freq (Old, Freq=High) vs A_Rare (Old, Freq=Low) vs A_Proto (New, Freq=0)
-        
-        target_ids = ["A_Freq_Dist1", "A_Rare_Dist1", "A_Proto"]
-        
-        for item in stimuli:
-            if item["id"] not in target_ids:
-                continue
+                assigned_label = club
+                if club == "Either":
+                    assigned_label = "1" if rng.rand() < 0.5 else "2"
                 
-            # -- Recognition Test --
-            # "Old/New" judgment. Modeled as instance familiarity (log likelihood of the features).
-            # We treat the instance (features+distractors) as the probe.
-            # Usually recognition probes don't have the category label visible? 
-            # In H-R 77, recognition is "Have you seen this person?". 
-            # So we query P(Features).
+                training_list.append({
+                    "features": feat,
+                    "extra": extra,
+                    "label": assigned_label, 
+                    "true_type": club, # Keep track if it was truly 'Either'
+                    "code": code
+                })
+        
+        # Shuffle Training Order
+        shuffle(training_list)
+        
+        # Train Model
+        tree = CobwebDiscreteTree(alpha=0.25, weight_attr=True) # Weighting might help with irrelevant dims?
+        
+        # "Subjects worked through 132 pairs... self-paced"
+        # We simulate 1 epoch of training? Or learning to stability?
+        # Text says "worked through 132... attempting to classify... learn from feedback".
+        # Usually implies 1 pass (1 block).
+        
+        for trial in training_list:
+            encoded = encode_training_instance(trial["features"], trial["extra"], trial["label"], val_map)
+            tree.fit([encoded])
             
-            # Note: For Cobweb, log_prob usually calculates joint probability of the leaf.
-            # We'll use the log_prob of the *entire* instance (minus class maybe?).
-            # The class label is part of the concept 'Person', but in recognition test, 
-            # strict recognition is usually feature-based. However, H-R participants learned names/clubs.
-            # We'll stick to Feature Likelihood.
+        # 2. Recognition Task & Final Classification Task
+        # Test phase uses "ANYONE" cards (no extraneous info).
+        # We test ALL items in Table 1 (Freq 0, 1, and 10).
+        
+        for code, club, freq in dataset_def:
+            features = decode_features(code)
+            probe = encode_test_probe(features)
             
-            test_instance_features = encode_full_item(item, include_class=False)
-            recognition_score = tree.log_prob(test_instance_features, 100, False)
+            # --- Recognition (Old/New) ---
+            # "Classified as OLD or NEW... Confidence 1-5"
+            # Modeled via Log Likelihood (Familiarity)
+            # We calculate log prob of the partial probe (Attributes 1,2,3).
+            # Note: Cobweb's log_prob function usually requires 'counts' management.
+            # We want P(F1, F2, F3).
+            recog_score = tree.log_prob(probe, 100, False) # Using partial matching
             
-            # -- Classification Test --
-            # "Which Club?". Predict Class.
+            # --- Classification (Club 1 or 2) ---
+            # "Classify... Club 1 or 2" (Neither is not an option in Final Class?)
+            # Text: "Final classification task... classified... as being in Club 1 or 2"
             
-            probs = tree.predict(test_instance_features, 100, False)
+            # We predict Class attr (Attr 6).
+            preds = tree.predict(probe, 100, False)
             
-            class_prob = 0.0
-            correct_class = item["class"]
-            if 6 in probs and correct_class in probs[6]:
-                class_prob = probs[6][correct_class]
+            p1 = 0.0
+            p2 = 0.0
+            
+            if 6 in preds:
+                if 1 in preds[6]: p1 = preds[6][1]
+                if 2 in preds[6]: p2 = preds[6][2]
+                
+            # Normalize to 1 vs 2 (ignore Neither mass if any)
+            total = p1 + p2
+            if total > 0:
+                p1_norm = p1 / total
+            else:
+                p1_norm = 0.5 # Guess
+                
+            # Determine correct direction for accuracy
+            # If Club 1 -> p1. If Club 2 -> p2.
+            # If Either -> Max(p1, p2) is 'correct' behavior? Or just p1?
+            # Metric: "Probability of calling it Club 1".
+            
+            # Identify Item Type for Reporting
+            # We care specifically about:
+            # - Club 1 Freq 10 (112, 121, 211) -> "Old"
+            # - Club 1 Freq 0 (111) -> "Prototype"
+            # - Club 1 Freq 1 (113...) -> "Rare" (Wait, 113 is dist 1 from 111)
+            
+            # Let's tag them based on Table 1 properties
+            is_club1 = (club == '1')
+            is_club2 = (club == '2')
+            
+            dist_111 = sum(c1 != c2 for c1, c2 in zip(code, '111'))
+            
+            item_tag = "Other"
+            if code == '111': item_tag = "Prototype"
+            elif club == '1':
+                if freq == 10: item_tag = "Freq_Exemplar" # Dist 1
+                elif freq == 1: item_tag = "Rare_Exemplar" # Dist 1 or 2
+                
+            # We specifically want to compare 111 (Proto), 112 (Freq), and 113 (Rare/one-time)
+            # Actually Table 1 shows:
+            # 112 Freq 10 (Dist 1 from 111)
+            # 113 Freq 1  (Dist 1 from 111)
+            # So 113 is a perfect "Rare" counterpart to 112.
             
             results.append({
                 "seed": s,
-                "stimulus_id": item["id"],
-                "type": item["type"],
-                "frequency": item["freq"],
-                "recognition_score": recognition_score, # Log Likelihood
-                "classification_accuracy": class_prob   # Probability of Correct Class
+                "code": code,
+                "club": club,
+                "freq": freq,
+                "distance_to_111": dist_111,
+                "recog_score": recog_score,
+                "p_club1": p1_norm,
+                "p_club1_raw": p1,
+                "p_club2_raw": p2,
+                "tag": item_tag
             })
             
-    return results
-
-def run_and_save_results():
-    results = execute_hayes_roth_simulation(number_of_seeds=30)
+    # Save Results
     df = pd.DataFrame(results)
-    
-    out_dir = Path(__file__).resolve().parent / "results"
+    out_dir = Path(__file__).parent / "results"
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "exp_specific_instance_discrete.csv"
-    
-    df.to_csv(out_path, index=False)
-    print(f"Hayes-Roth Simulation Results saved to {out_path}")
-    
-    metadata = {
-            "experiment": "Hayes-Roth & Hayes-Roth (1977) Replication",
-            "description": "Specific Instance Effect using 5-feature discrete stimuli.",
-            "manipulation": "Orthogonal Distance (from Prototype) vs Frequency.",
-            "dimensions": "3 Relevant + 2 Irrelevant (Distractors)",
-            "key_comparison": "A_Freq (Dist 1, High Freq) vs A_Proto (Dist 0, Zero Freq)"
-        }
-    with open(out_dir / "metadata.json", "w") as f:
-        json.dump(metadata, f, indent=2)
+    df.to_csv(out_dir / "exp_specific_instance_discrete.csv", index=False)
+    print("Saved specific instance results.")
 
 if __name__ == "__main__":
-    run_and_save_results()
+    run_hayes_roth_simulation()
