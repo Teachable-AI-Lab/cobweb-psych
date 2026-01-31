@@ -3,6 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
+from scipy.stats import spearmanr
 
 # Stimulus Definitions
 STIMULI_DEFS = {
@@ -56,6 +57,13 @@ HUMAN_PROBS = {
     "Stim3": 0.69, "Stim8": 0.66, "Stim16": 0.84
 }
 
+HUMAN_ERRORS = {
+    # Train A
+    "Stim4": 4.9, "Stim7": 3.3, "Stim15": 3.2, "Stim13": 4.8, "Stim5": 4.5,
+    # Train B
+    "Stim12": 5.5, "Stim2": 5.2, "Stim14": 3.9, "Stim10": 3.1
+}
+
 def get_distance(stim_id, category):
     if stim_id not in STIMULI_DEFS:
         return 0
@@ -97,6 +105,8 @@ def visualize_results():
     
     # Create Label with Type and Category
     agg['label'] = agg.apply(lambda x: f"{x['stimulus_id']}\n({x['type']}, {x['correct_cat']})", axis=1)
+
+    markers = {"Old": "o", "New": "s"}
 
     # --- Plot 1: Model Probability of Category A (Central Tendency) ---
     plt.figure(figsize=(20, 6))
@@ -163,16 +173,15 @@ def visualize_results():
     sns.set_context("talk")
     sns.set_style("whitegrid")
     
-    # Scatter plot
-    # x: distance, y: prob_correct
-    # hue: correct_cat (A/B)
-    # style: type (Old/New) -> markers
-    
-    # We want circles for Old, squares for New
-    # Note: 'Old' and 'New' are the values in column 'type'
-    markers = {"Old": "o", "New": "s"}
-    
-    sns.scatterplot(
+    # Calculate Correlation
+    subset = agg[['distance', 'prob_correct']].dropna()
+    if len(subset) > 1:
+        corr, pval = spearmanr(subset['distance'], subset['prob_correct'])
+        corr_text = f"Spearman r = {corr:.2f}, p = {pval:.2f}"
+    else:
+        corr_text = "N < 2"
+
+    p3 = sns.scatterplot(
         data=agg, 
         x='distance', 
         y='prob_correct', 
@@ -184,11 +193,26 @@ def visualize_results():
         palette={'A': 'skyblue', 'B': 'salmon'}
     )
     
-    plt.title("Probability of Correct Choice vs Distance from Prototype")
+    # Label each dot with stimulus number
+    for line in range(0, agg.shape[0]):
+        if pd.isna(agg.distance.iloc[line]) or pd.isna(agg.prob_correct.iloc[line]):
+            continue
+        stim_label = agg.stimulus_id.iloc[line].replace("Stim", "")
+        p3.text(
+            agg.distance.iloc[line] + 0.1, 
+            agg.prob_correct.iloc[line], 
+            stim_label, 
+            horizontalalignment='left', 
+            size='medium', 
+            color='black', 
+            weight='semibold'
+        )
+
+    plt.title(f"Probability of Correct Choice vs Distance from Prototype\n({corr_text})")
     plt.xlabel("Hamming Distance from Category Prototype")
     plt.ylabel("Probability of Correct Choice")
-    plt.ylim(0, 1)
-    plt.axhline(0.5, ls='--', color='gray', label='Chance')
+    # plt.ylim(0, 1) 
+    # plt.axhline(0.5, ls='--', color='gray', label='Chance')
     
     # Custom legend: Remove titles
     h, l = plt.gca().get_legend_handles_labels()
@@ -214,8 +238,16 @@ def visualize_results():
     plt.figure(figsize=(10, 8))
     sns.set_context("talk")
     sns.set_style("whitegrid")
+    
+    # Calculate Correlation
+    subset = agg[['human_rating', 'prob_correct']].dropna()
+    if len(subset) > 1:
+        corr, pval = spearmanr(subset['human_rating'], subset['prob_correct'])
+        corr_text = f"Spearman r = {corr:.2f}, p = {pval:.2f}"
+    else:
+        corr_text = "N < 2"
 
-    sns.scatterplot(
+    p4 = sns.scatterplot(
         data=agg,
         x='human_rating',
         y='prob_correct',
@@ -226,13 +258,27 @@ def visualize_results():
         alpha=0.8,
         palette={'A': 'skyblue', 'B': 'salmon'}
     )
+
+    # Label each dot with stimulus number
+    for line in range(0, agg.shape[0]):
+        if pd.isna(agg.human_rating.iloc[line]) or pd.isna(agg.prob_correct.iloc[line]):
+            continue
+        stim_label = agg.stimulus_id.iloc[line].replace("Stim", "")
+        p4.text(
+            agg.human_rating.iloc[line] + 0.1, 
+            agg.prob_correct.iloc[line], 
+            stim_label, 
+            horizontalalignment='left', 
+            size='medium', 
+            color='black', 
+            weight='semibold'
+        )
     
-    plt.title("Model Probability vs Human Ratings")
+    plt.title(f"Model Probability vs Human Ratings\n({corr_text})")
     plt.xlabel("Human Rating (Experiment / Predicted)")
     plt.ylabel("Model Probability of Correct Choice")
-    plt.ylim(0, 1)
-    # plt.xlim(1, 9) # Assuming 1-9 scale based on values ~3-5.5? Let auto-scale handle it.
-    plt.axhline(0.5, ls='--', color='gray', label='Chance')
+    # plt.ylim(0, 1)
+    # plt.axhline(0.5, ls='--', color='gray', label='Chance')
     
     # Custom legend: Remove titles
     h, l = plt.gca().get_legend_handles_labels()
@@ -256,6 +302,14 @@ def visualize_results():
     plt.figure(figsize=(10, 8))
     sns.set_context("talk")
     sns.set_style("whitegrid")
+    
+    # Calculate Correlation
+    subset = agg[['human_prob', 'prob_correct']].dropna()
+    if len(subset) > 1:
+        corr, pval = spearmanr(subset['human_prob'], subset['prob_correct'])
+        corr_text = f"Spearman r = {corr:.2f}, p = {pval:.2f}"
+    else:
+        corr_text = "N < 2"
     
     # Scatter plot
     p = sns.scatterplot(
@@ -289,7 +343,7 @@ def visualize_results():
             weight='semibold'
         )
 
-    plt.title("Model Probability vs Human Probability")
+    plt.title(f"Model Probability vs Human Probability\n({corr_text})")
     plt.xlabel("Human Probability of Correct Choice")
     plt.ylabel("Model Probability of Correct Choice")
     
@@ -311,6 +365,74 @@ def visualize_results():
     plt.savefig(out_prob_corr)
     print(f"Saved probability correlation plot to: {out_prob_corr}")
     plt.close()
+
+    # --- Plot 6: Human Errors vs Cobweb Errors (Training) ---
+    err_path = results_path.parent / "exp_central_tendency_errors.csv"
+    if err_path.exists():
+        df_err = pd.read_csv(err_path)
+        
+        # Aggregate Cobweb Errors per Stimulus
+        agg_err = df_err.groupby(['stimulus_id', 'cat']).agg({'error_count': 'mean'}).reset_index()
+        
+        # Map Human Errors
+        agg_err['human_error'] = agg_err['stimulus_id'].map(HUMAN_ERRORS)
+        
+        # Filter only Training items (those present in HUMAN_ERRORS)
+        agg_err = agg_err.dropna(subset=['human_error'])
+        
+        plt.figure(figsize=(10, 8))
+        sns.set_context("talk")
+        sns.set_style("whitegrid")
+        
+        # Calculate Correlation
+        subset = agg_err[['human_error', 'error_count']].dropna()
+        if len(subset) > 1:
+            corr, pval = spearmanr(subset['human_error'], subset['error_count'])
+            corr_text = f"Spearman r = {corr:.2f}, p = {pval:.2f}"
+        else:
+            corr_text = "N < 2"
+        
+        p6 = sns.scatterplot(
+            data=agg_err, 
+            x='human_error', 
+            y='error_count', 
+            hue='cat', 
+            s=200, 
+            alpha=0.8,
+            palette={'A': 'skyblue', 'B': 'salmon'}
+        )
+        
+        # Labels
+        for line in range(0, agg_err.shape[0]):
+            if pd.isna(agg_err.human_error.iloc[line]) or pd.isna(agg_err.error_count.iloc[line]):
+                continue
+            stim_label = agg_err.stimulus_id.iloc[line].replace("Stim", "")
+            p6.text(
+                agg_err.human_error.iloc[line] + 0.1, 
+                agg_err.error_count.iloc[line], 
+                stim_label, 
+                horizontalalignment='left', 
+                size='medium', 
+                color='black', 
+                weight='semibold'
+            )
+            
+        plt.title(f"Cobweb vs Human Training Errors\n({corr_text})")
+        plt.xlabel("Human Error Rating")
+        plt.ylabel("Cobweb Mean Training Errors")
+        
+        # Legend cleanup
+        h, l = plt.gca().get_legend_handles_labels()
+        plt.legend(h, l, title=None, bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+        
+        plt.tight_layout()
+        
+        out_err = results_path.parent / "plot_medin_errors.png"
+        plt.savefig(out_err)
+        print(f"Saved error correlation plot to: {out_err}")
+        plt.close()
+    else:
+        print("Error log not found; skipping Plot 6.")
 
 if __name__ == "__main__":
     visualize_results()

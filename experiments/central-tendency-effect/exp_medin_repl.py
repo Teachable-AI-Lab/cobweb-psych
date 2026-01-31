@@ -67,6 +67,7 @@ def generate_stimuli_mapping(subject_seed):
 def run_experiment():
     print("Running Medin & Schaffer (1978) Experiment 2 Replication...")
     all_results = []
+    training_errors_log = []
     
     for s_idx in range(N_SUBJECTS):
         current_seed = RANDOM_SEED + s_idx
@@ -82,6 +83,9 @@ def run_experiment():
         
         # Category Mapping (Must be Int to Int/Float for Discrete Tree)
         cat_to_int = {"A": 1, "B": 2}
+
+        # Track errors per stimulus for this subject
+        subj_errors = {item["name"]: 0 for item in train_items}
 
         # TRAINING
         consecutive_perfect = 0
@@ -110,6 +114,7 @@ def run_experiment():
                 choice = "A" if prob_A > prob_B else "B"
                 if choice != item["cat"]:
                     errors += 1
+                    subj_errors[item["name"]] += 1
 
                 # Train
                 instance_with_cat = instance.copy()
@@ -124,6 +129,15 @@ def run_experiment():
                 
             if consecutive_perfect >= CRITERION_RUNS:
                 break
+        
+        # Log training errors for this subject
+        for s_name, count in subj_errors.items():
+            training_errors_log.append({
+                "subject": s_idx,
+                "stimulus_id": s_name,
+                "error_count": count,
+                "cat": STIMULI_DEFS[s_name]["cat"] # Use base def for consistent category lookup
+            })
         
         # TRANSFER
         shuffle(transfer_items)
@@ -172,6 +186,12 @@ def run_experiment():
     csv_path = os.path.join(output_dir, "exp_central_tendency_continuous.csv")
     df.to_csv(csv_path, index=False)
     print(f"Results saved to {csv_path}")
+
+    # Save Training Errors
+    df_err = pd.DataFrame(training_errors_log)
+    err_path = os.path.join(output_dir, "exp_central_tendency_errors.csv")
+    df_err.to_csv(err_path, index=False)
+    print(f"Training Errors saved to {err_path}")
 
 if __name__ == "__main__":
     run_experiment()
