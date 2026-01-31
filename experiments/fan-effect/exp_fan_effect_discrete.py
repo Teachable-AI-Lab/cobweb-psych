@@ -18,10 +18,9 @@ from pathlib import Path
 #       - Memory Condition: "Did [Person] [Action]?" (Exact Retrieval). RT ~ 1 / P(Action|Person)
 #       - Category Condition: "Is [Action] likely for [Person]?" (Plausibility). RT ~ 1 / P(Theme|Person)
 
-def generate_stimuli_reder_ross():
+def generate_stimuli():
     """
-    Generates thematic stimuli based on Anderson (1974) style Person-Location sentences
-    but structured for Reder & Ross (1983) plausibility.
+    Generates thematic stimuli based on Anderson (1974) style Person-Location sentences.
     
     Fan Sizes: 1, 2, 3 (Original Fan Effect).
     Stimuli: "The [Person] is in the [Location]".
@@ -120,7 +119,7 @@ def run_experiment_reder_ross(n_seeds=20):
         seed(s)
         np.random.seed(s)
         
-        stimuli = generate_stimuli_reder_ross()
+        stimuli = generate_stimuli()
         val_map = create_value_mapping(stimuli)
         
         tree = CobwebDiscreteTree(alpha=0.25)
