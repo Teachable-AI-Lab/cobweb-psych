@@ -165,13 +165,16 @@ def run_hayes_roth_simulation(n_subjects=20):
         
         # Shuffle Training Order
         shuffle(training_list)
+        # print(training_list[:2])
         
         # Train Model
-        tree = CobwebDiscreteTree(alpha=0.25, weight_attr=True)
+        tree = CobwebDiscreteTree(alpha=1, weight_attr=True)
         
         for trial in training_list:
             encoded = encode_training_instance(trial["features"], trial["extra"], trial["label"], val_map)
-            tree.fit([encoded])
+            # print(encoded)
+            # tree.fit([encoded])
+            tree.ifit(encoded)
             
         # 2. Recognition Task & Final Classification Task
         # Test ALL items in Table 1 (Freq 0, 1, and 10).
@@ -204,10 +207,15 @@ def run_hayes_roth_simulation(n_subjects=20):
                 
             # Tag Item Type for Reporting
             item_tag = "Other"
-            if code == '111': item_tag = "Prototype"
+            if code == '111' or code == "222": item_tag = "Prototype"
             elif club == '1':
-                if freq == 10: item_tag = "Freq_Exemplar" 
-                elif freq == 1: item_tag = "Rare_Exemplar"
+                if freq == 10: item_tag = "1Transform" 
+                elif freq == 1 and code.count('1') == 2: item_tag = "1Transform"
+                elif freq == 1 and code.count('1') == 1: item_tag = "2Transform"
+            elif club == "2":
+                if freq == 10: item_tag = "1Transform" 
+                elif freq == 1 and code.count('2') == 2: item_tag = "1Transform"
+                elif freq == 1 and code.count('2') == 1: item_tag = "2Transform"
                 
             results.append({
                 "seed": s,
@@ -227,4 +235,4 @@ def run_hayes_roth_simulation(n_subjects=20):
     print("Saved specific instance results.")
 
 if __name__ == "__main__":
-    run_hayes_roth_simulation()
+    run_hayes_roth_simulation(27)
