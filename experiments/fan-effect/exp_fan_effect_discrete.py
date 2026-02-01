@@ -3,17 +3,12 @@ from random import seed, shuffle, choice
 import numpy as np
 import pandas as pd
 from pathlib import Path
+from math import exp
 
 # Fan Effect (Anderson, 1974) & Reder & Ross (1983)
 # Replicating using data from Table 2.
 
-def generate_stimuli_table_2():
-    """
-    Returns data from Table 2: Materials Used in Simulation.
-    Format: (Person, Theme, Predicate, Split)
-    Features 1-3 correspond to col 1-3. Feature 4 is Split (0=Target/Train, 1=Foil/TestOnly).
-    """
-    raw_data = [
+target_stimuli = [
         # --- Targets (Split 0) ---
         # Fan 3 (Person 0)
         (0, 0, 0, 0), (0, 0, 1, 0), (0, 0, 2, 0),
@@ -28,7 +23,9 @@ def generate_stimuli_table_2():
         (4, 1, 9, 0), (4, 1, 10, 0),
         # Fan 1 (Person 5)
         (5, 1, 11, 0),
-        
+]
+
+related_foil_stimuli = [
         # --- Related Foils (Split 1) ---
         # Same Theme, Different Predicate (Mixed from other persons of same theme)
         (0, 0, 3, 1), (0, 0, 4, 1), (0, 0, 5, 1), # P0 (Fan 3)
@@ -37,8 +34,10 @@ def generate_stimuli_table_2():
         
         (3, 1, 9, 1), (3, 1, 10, 1), (3, 1, 11, 1), # P3 (Fan 3)
         (4, 1, 6, 1), (4, 1, 7, 1),                 # P4 (Fan 2)
-        (5, 1, 8, 1),                               # P5 (Fan 1)
-        
+        (5, 1, 8, 1)                               # P5 (Fan 1)
+]
+
+unrelated_foil_stimuli = [
         # --- Unrelated Foils (Split 1) ---
         # Different Theme (Predicates from opposite theme)
         (0, 1, 9, 1), (0, 1, 10, 1), (0, 1, 11, 1), # P0 (Fan 3)
@@ -49,7 +48,7 @@ def generate_stimuli_table_2():
         (4, 0, 0, 1), (4, 0, 1, 1),                 # P4 (Fan 2)
         (5, 0, 2, 1)                                # P5 (Fan 1)
     ]
-    return raw_data
+        
 
 def get_fan_logic():
     # Helper to ID fan size by Person ID
@@ -63,19 +62,19 @@ def encode_item(item):
     Item tuple: (Person, Theme, Predicate, Split)
     Encodes Features 1, 2, 3. Omit 4.
     """
-    p, t, pr, _ = item
+    p, t, pr, s = item
     encoded = {}
     encoded[1] = {p: 1.0}
     encoded[2] = {t: 1.0}
     encoded[3] = {pr: 1.0}
+    encoded[4] = {s: 1.0}
     return encoded
 
-def run_experiment_reder_ross(n_seeds=20):
-    raw_data = generate_stimuli_table_2()
+def run_experiment_reder_ross(n_seeds=100):
     fan_map = get_fan_logic()
     results = []
 
-    training_items = [x for x in raw_data if x[3] == 0]
+    training_items = [x for x in target_stimuli]
     
     person_theme_map = {0:0, 1:0, 2:0, 3:1, 4:1, 5:1}
 
@@ -83,83 +82,66 @@ def run_experiment_reder_ross(n_seeds=20):
         seed(s)
         np.random.seed(s)
         
-        # Instantiate Tree
-        tree = CobwebDiscreteTree(alpha=0.001)
-        
-        # Training
-        # Shuffle presentation order
-        train_shuffled = training_items.copy()
-        epochs = 10 
-        
-        for e in range(epochs):
-            shuffle(train_shuffled)
-            for item in train_shuffled:
-                # Omit split bit
-                # Pass features 1, 2, 3
-                inst = encode_item(item)
-                tree.fit([inst])
-                
-        # Testing
-        # We test on ALL items in Table 2 (Targets and Foils)
-        for item in raw_data:
-            p, t, pr, code = item
-            fan = fan_map[p]
-            
-            # Determine Condition Label
-            if code == 0:
-                cond_label = "Target" # True Fact
+        # Test on foils
+        for cond, test_stimuli in [('Memory', related_foil_stimuli),
+                              ('Categorization', unrelated_foil_stimuli)]:
+
+            if cond == "Memory":
+                tree = CobwebDiscreteTree(alpha=0.001)
             else:
-                # Foil: approx check if Related or Unrelated
-                expected_theme = person_theme_map[p]
-                if t == expected_theme:
-                    cond_label = "Related Foil"
-                else:
-                    cond_label = "Unrelated Foil"
+                tree = CobwebDiscreteTree(alpha=0.1)
+
+            # # let it know that seen and unseen both exist.
+            # for _ in range(1):
+            #     for l in range(2):
+            #         for i in range(5):
+            #             tree.ifit({1: {i: 1.0}, 4:{l: 1.0}})
+
+            #         for i in range(2):
+            #             tree.ifit({2: {i: 1.0}, 4:{l: 1.0}})
+
+            #         for i in range(11):
+            #             tree.ifit({3: {i: 1.0}, 4:{l: 1.0}})
+
+            #         for i in range(2):
+            #             tree.ifit({4: {i: 1.0}, 4:{l: 1.0}})
             
-            # --- MEMORY TASK (Recognition) ---
-            # Task: "Judge whether specific sentences had been studied."
-            # Foils: Related Foils (Same Theme, Different Predicate).
-            # Expected Result: Standard Fan Effect (RT increases with Fan size).
-            # Logic: We cue with Person & Theme to predict the specific Predicate.
-            # As Fan increases, the probability mass for P(Predicate | Person, Theme) 
-            # is split among more learned predicates, lowering the probability for the specific target
-            # and increasing RT (1/P).
-            query_mem = {1: {p: 1.0}, 2: {t: 1.0}}
-            out_mem = tree.predict(query_mem, 30, False)
+            # Training
+            # Shuffle presentation order
+            train_shuffled = training_items.copy() + test_stimuli.copy()
+            epochs = 1 
             
-            p_mem = 0.0001
-            if 3 in out_mem and pr in out_mem[3]:
-                p_mem = out_mem[3][pr]
-            
-            rt_mem = 1.0 / p_mem if p_mem > 0 else 100.0
-            
-            # --- CATEGORY TASK (Plausibility) ---
-            # Task: "Judge whether the sentence is like the sentences they had studied."
-            # Foils: Unrelated Foils (Different Theme). Targets & Related Foils are "Plausible".
-            # Expected Result: Reverse Fan Effect (RT decreases with Fan size for Targets).
-            # Logic: We cue with Person to predict the Theme (checking consistency).
-            # "Is this Person a [Theme] type?"
-            # As Fan increases (more instances of Person X with Theme Y), the Person->Theme 
-            # association is strengthened (higher counts relative to smoothing), 
-            # increasing P(Theme | Person) and decreasing RT.
-            query_cat = {1: {p: 1.0}}
-            out_cat = tree.predict(query_cat, 30, False)
-            
-            p_cat = 0.0001
-            if 2 in out_cat and t in out_cat[2]:
-                p_cat = out_cat[2][t]
-                
-            rt_cat = 1.0 / p_cat if p_cat > 0 else 100.0
-            
-            results.append({
-                "seed": s,
-                "fan_size": fan,
-                "type": cond_label,
-                "rt_memory": rt_mem,
-                "rt_category": rt_cat,
-                "prob_memory": p_mem,
-                "prob_category": p_cat
-            })
+            for e in range(epochs):
+                shuffle(train_shuffled)
+                for item in train_shuffled:
+                    # Pass features 1, 2, 3 AND 4.
+                    inst = encode_item(item)
+                    tree.ifit(inst)
+
+            # Testing
+            for item_type, test_items in [('Foil', test_stimuli), ('Target', target_stimuli)]:
+                for item in test_items:
+                    fan = fan_map[item[0]]
+                    query = encode_item(item)
+
+                    # remove label when testing
+                    del query[4]
+
+                    if cond == "Memory":
+                        pred = exp(tree.log_prob(query, 100, False))
+                        # pred = tree.predict(query, 30, False)[4][item[4]]
+                    else:
+                        pred = tree.predict(query, 100, False)[4][item[3]]
+                        # pred = tree.predict(query, 30, False)[2][1]
+
+                    results.append({
+                        "seed": s,
+                        "fan_size": fan,
+                        "condition": cond,
+                        "type": item_type,
+                        "pred": pred,
+                        # 'loglikelihood': ll
+                    })
             
     # Save
     df = pd.DataFrame(results)
